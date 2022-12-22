@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-
 	"log"
 	"math/rand"
 	"net/http"
@@ -41,7 +40,6 @@ type Result struct {
 var db []Result
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
-
 	result := Result{}
 	if r.Method == "POST" {
 		if !isValidURL(r.FormValue("s")) {
@@ -59,11 +57,9 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	db = append(db, result)
-
 }
 
 func redirectTo(w http.ResponseWriter, r *http.Request) {
-
 	vars := mux.Vars(r)
 	b := 0
 	for link := range db {
@@ -85,5 +81,5 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage)
 	router.HandleFunc("/to/{key}", redirectTo)
-	log.Fatal(http.ListenAndServe("localhost:80800", router))
+	log.Fatal(http.ListenAndServe("localhost:8080", router))
 }
