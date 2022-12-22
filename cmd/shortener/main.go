@@ -20,7 +20,7 @@ func shorting() string {
 	return string(b)
 }
 
-func isValidUrl(token string) bool {
+func isValidURL(token string) bool {
 	_, err := url.ParseRequestURI(token)
 	if err != nil {
 		return false
@@ -44,7 +44,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 
 	result := Result{}
 	if r.Method == "POST" {
-		if !isValidUrl(r.FormValue("s")) {
+		if !isValidURL(r.FormValue("s")) {
 			fmt.Println("Что-то не так")
 			result.Status = "Ссылка имеет неправильный формат!"
 			w.WriteHeader(400)
