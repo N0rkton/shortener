@@ -85,5 +85,5 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage)
 	router.HandleFunc("/to/{key}", redirectTo)
-	log.Fatal(http.ListenAndServe(":8000", router))
+	log.Fatal(http.ListenAndServe("localhost:80800", router))
 }
