@@ -55,7 +55,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 
 			w.WriteHeader(201)
 			w.Header().Set("content-type", "text/plain")
-			w.Write([]byte(result.Code))
+			w.Write([]byte("http://localhost:8080/" + result.Code))
 		}
 	}
 
@@ -67,9 +67,13 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	for link := range db {
 		if db[link].Code == vars["key"] {
 			b = 1
+			fmt.Print(db[link].Link)
 			w.WriteHeader(307)
-
-			w.Header().Set("Location", db[link].Link)
+			url := *r.URL
+			url.Path = db[link].Link
+			p := url.String()
+			w.Header().Set("Location", p)
+			//w.Write([]byte(db[link].Link))
 			break
 		}
 	}
