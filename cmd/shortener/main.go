@@ -12,12 +12,12 @@ import (
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
-func shorting() string {
+func shorting() []byte {
 	b := make([]byte, 5)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
-	return string(b)
+	return b
 }
 
 func isValidURL(token string) bool {
@@ -34,7 +34,7 @@ func isValidURL(token string) bool {
 
 type Result struct {
 	Link   string
-	Code   string
+	Code   []byte
 	Status string
 }
 type param struct {
@@ -63,8 +63,8 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			result.Status = "Сокращение было выполнено успешно"
 			db = append(db, result)
 			w.WriteHeader(201)
-			w.Header().Set("content-type", "text/plain")
-			w.Write([]byte("http://localhost:8080/" + result.Code))
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(s)
 
 		}
 	}
@@ -75,7 +75,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	b := 0
 	for link := range db {
-		if db[link].Code == vars["key"] {
+		if string(db[link].Code) == vars["key"] {
 			b = 1
 			fmt.Print(db[link].Link)
 
