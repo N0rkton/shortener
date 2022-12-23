@@ -42,21 +42,23 @@ var db []Result
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	result := Result{}
 	if r.Method == "POST" {
-		if !isValidURL(r.FormValue("s")) {
+		if !isValidURL(r.URL.Query().Get("")) {
 			fmt.Println("Что-то не так")
 			result.Status = "Ссылка имеет неправильный формат!"
 			w.WriteHeader(400)
 			result.Link = ""
 		} else {
-			result.Link = r.FormValue("s")
+			result.Link = r.URL.Query().Get("")
 			result.Code = shorting()
+			result.Status = "Сокращение было выполнено успешно"
+			db = append(db, result)
+
 			w.WriteHeader(201)
 			w.Header().Set("content-type", "text/plain")
 			w.Write([]byte(result.Code))
-			result.Status = "Сокращение было выполнено успешно"
 		}
 	}
-	db = append(db, result)
+
 }
 
 func redirectTo(w http.ResponseWriter, r *http.Request) {
@@ -65,8 +67,8 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	for link := range db {
 		if db[link].Code == vars["key"] {
 			b = 1
-			fmt.Fprintf(w, "<script>location='%s';</script>", db[link].Link)
 			w.WriteHeader(307)
+
 			w.Header().Set("Location", db[link].Link)
 			break
 		}
@@ -80,6 +82,6 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage)
-	router.HandleFunc("/to/{key}", redirectTo)
+	router.HandleFunc("/{key}", redirectTo)
 	log.Fatal(http.ListenAndServe("localhost:8080", router))
 }
