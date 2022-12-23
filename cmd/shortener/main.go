@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"log"
@@ -9,7 +10,7 @@ import (
 	"net/url"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 func shorting() string {
 	b := make([]byte, 5)
@@ -36,26 +37,35 @@ type Result struct {
 	Code   string
 	Status string
 }
+type param struct {
+	URL string
+}
 
 var db []Result
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	result := Result{}
+	var s param
 	if r.Method == "POST" {
-		if !isValidURL(r.URL.Query().Get("")) {
+		err := json.NewDecoder(r.Body).Decode(&s)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		if !isValidURL(s.URL) {
 			fmt.Println("Что-то не так")
 			result.Status = "Ссылка имеет неправильный формат!"
 			w.WriteHeader(400)
 			result.Link = ""
 		} else {
-			result.Link = r.URL.Query().Get("")
+			result.Link = s.URL
 			result.Code = shorting()
 			result.Status = "Сокращение было выполнено успешно"
 			db = append(db, result)
-
 			w.WriteHeader(201)
 			w.Header().Set("content-type", "text/plain")
 			w.Write([]byte("http://localhost:8080/" + result.Code))
+
 		}
 	}
 
@@ -68,11 +78,13 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 		if db[link].Code == vars["key"] {
 			b = 1
 			fmt.Print(db[link].Link)
-			w.WriteHeader(307)
+
 			url := *r.URL
 			url.Path = db[link].Link
 			p := url.String()
+			w.WriteHeader(307)
 			w.Header().Set("Location", p)
+
 			//w.Write([]byte(db[link].Link))
 			break
 		}
