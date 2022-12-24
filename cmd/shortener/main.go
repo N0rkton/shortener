@@ -76,8 +76,11 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 			b = 1
 			fmt.Print(db[link].Link)
 			w.WriteHeader(307)
+			otv := *r.URL
+			otv.Path = db[link].Link
+			p := otv.String()
 			w.Header().Set("content-type", "plain/text")
-			w.Header().Add("Location", db[link].Link)
+			w.Header().Add("Location", p)
 			w.Write([]byte(db[link].Link))
 			break
 		}
