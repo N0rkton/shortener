@@ -78,12 +78,10 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 		if string(db[link].Code) == vars["id"] {
 			b = 1
 			fmt.Print(db[link].Link)
-			url := *r.URL
-			url.Path = db[link].Link
-			p := url.String()
-			w.WriteHeader(307)
-			w.Header().Set("Location", p)
 
+			w.WriteHeader(307)
+			w.Header().Set("Location", "plain/text")
+			w.Write([]byte(db[link].Link))
 			break
 		}
 	}
