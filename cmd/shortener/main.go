@@ -12,12 +12,12 @@ import (
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
-func shorting() []byte {
+func shorting() string {
 	b := make([]byte, 5)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
-	return b
+	return string(b)
 }
 
 func isValidURL(token string) bool {
@@ -34,7 +34,7 @@ func isValidURL(token string) bool {
 
 type Result struct {
 	Link   string
-	Code   []byte
+	Code   string
 	Status string
 }
 type param struct {
@@ -63,8 +63,8 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			result.Status = "Сокращение было выполнено успешно"
 			db = append(db, result)
 			w.WriteHeader(201)
-			w.Header().Set("content-type", "application/json")
-			json.NewEncoder(w).Encode(s)
+			w.Header().Set("content-type", "plain/text")
+			w.Write([]byte("http://localhost:8080/" + result.Code))
 
 		}
 	}
@@ -75,17 +75,15 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	b := 0
 	for link := range db {
-		if string(db[link].Code) == vars["key"] {
+		if string(db[link].Code) == vars["id"] {
 			b = 1
 			fmt.Print(db[link].Link)
-
 			url := *r.URL
 			url.Path = db[link].Link
 			p := url.String()
 			w.WriteHeader(307)
 			w.Header().Set("Location", p)
 
-			//w.Write([]byte(db[link].Link))
 			break
 		}
 	}
@@ -98,6 +96,6 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage)
-	router.HandleFunc("/{key}", redirectTo)
+	router.HandleFunc("/{id}", redirectTo)
 	log.Fatal(http.ListenAndServe("localhost:8080", router))
 }
