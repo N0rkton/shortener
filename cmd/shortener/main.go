@@ -72,20 +72,19 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	b := 0
 	for link := range db {
-		if string(db[link].Code) == vars["id"] {
+		if db[link].Code == vars["id"] {
 			b = 1
 
+			w.Header().Set("Location", db[link].Link)
 			w.WriteHeader(307)
-
-			w.Header().Add("Location", db[link].Link)
 			fmt.Print(w.Header().Values("Location"))
-			break
+			fmt.Print(w.Header())
+			return
 		}
 	}
 	if b == 0 {
 		w.WriteHeader(400)
 	}
-
 }
 
 func main() {
