@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -37,28 +37,25 @@ type Result struct {
 	Code   string
 	Status string
 }
-type param struct {
-	URL string
-}
 
 var db []Result
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	result := Result{}
-	var s param
+
 	if r.Method == "POST" {
-		err := json.NewDecoder(r.Body).Decode(&s)
+		s, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		if !isValidURL(s.URL) {
+		if !isValidURL(string(s)) {
 			fmt.Println("Что-то не так")
 			result.Status = "Ссылка имеет неправильный формат!"
 			w.WriteHeader(400)
 			result.Link = ""
 		} else {
-			result.Link = s.URL
+			result.Link = string(s)
 			result.Code = shorting()
 			result.Status = "Сокращение было выполнено успешно"
 			db = append(db, result)
@@ -78,9 +75,9 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 		if string(db[link].Code) == vars["id"] {
 			b = 1
 			fmt.Print(db[link].Link)
-
 			w.WriteHeader(307)
-			w.Header().Set("Location", "plain/text")
+			w.Header().Set("content-type", "plain/text")
+			w.Header().Add("Location", db[link].Link)
 			w.Write([]byte(db[link].Link))
 			break
 		}
