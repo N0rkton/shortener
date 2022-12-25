@@ -42,7 +42,6 @@ var db []Result
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	result := Result{}
-
 	if r.Method == "POST" {
 		s, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -62,19 +61,14 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(201)
 			w.Header().Set("content-type", "plain/text")
 			w.Write([]byte("http://localhost:8080/" + result.Code))
-
 		}
 	}
-
 }
 
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	b := 0
 	for link := range db {
 		if db[link].Code == vars["id"] {
-			b = 1
-
 			w.Header().Set("Location", db[link].Link)
 			w.WriteHeader(307)
 			fmt.Print(w.Header().Values("Location"))
@@ -82,9 +76,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if b == 0 {
-		w.WriteHeader(400)
-	}
+	w.WriteHeader(400)
 }
 
 func main() {
