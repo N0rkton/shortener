@@ -42,6 +42,7 @@ func Test_indexPage(t *testing.T) {
 			h(w, request)
 			result := w.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)
+			defer result.Body.Close()
 		})
 	}
 }
@@ -79,6 +80,7 @@ func Test_redirectTo(t *testing.T) {
 			r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, tt.request, nil))
 			result := w2.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)
+			defer result.Body.Close()
 		})
 	}
 }
