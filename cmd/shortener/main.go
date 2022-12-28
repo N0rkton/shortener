@@ -10,9 +10,10 @@ import (
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+const urlLen = 5
 
-func shorting() string {
-	b := make([]byte, 5)
+func generateRandomString() string {
+	b := make([]byte, urlLen)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
@@ -34,21 +35,22 @@ func isValidURL(token string) bool {
 var db map[string]string
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	if r.Method == http.MethodPost {
 		s, err := io.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		if !isValidURL(string(s)) {
-			w.WriteHeader(400)
-		} else {
-			Code := shorting()
-			db[Code] = string(s)
-			w.WriteHeader(201)
-			w.Header().Set("content-type", "plain/text")
-			w.Write([]byte("http://localhost:8080/" + Code))
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
+		code := generateRandomString()
+		db[code] = string(s)
+		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("content-type", "plain/text")
+		w.Write([]byte("http://localhost:8080/" + code))
+
 	}
 }
 

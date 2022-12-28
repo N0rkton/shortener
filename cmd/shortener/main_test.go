@@ -20,7 +20,7 @@ func Test_indexPage(t *testing.T) {
 		request string
 		body    string
 	}{
-		// TODO: Add test cases.
+
 		{name: "Positive",
 			want:    want{code: 201},
 			request: "http://localhost:8080/",
