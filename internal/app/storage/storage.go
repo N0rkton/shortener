@@ -3,8 +3,8 @@ package storage
 import "errors"
 
 type Storage interface {
-	AddUrl(code string, url string)
-	GetUrl(url string) (string, error)
+	AddURL(code string, url string)
+	GetURL(url string) (string, error)
 	NewStore() Store
 }
 type Store struct {
@@ -18,7 +18,7 @@ func NewStore() Store {
 	ns.db = make(map[string]string)
 	return ns
 }
-func (sm *Store) AddUrl(code string, url string) {
+func (sm *Store) AddURL(code string, url string) {
 	sm.db[code] = url
 }
 

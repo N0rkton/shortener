@@ -47,7 +47,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		code := generateRandomString()
-		db.AddUrl(code, string(s))
+		db.AddURL(code, string(s))
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("content-type", "plain/text")
 		w.Write([]byte("http://localhost:8080/" + code))
