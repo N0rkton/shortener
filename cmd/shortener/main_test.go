@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -34,7 +35,7 @@ func Test_indexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db = make(map[string]string)
+			db = storage.NewStore()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
@@ -58,7 +59,7 @@ func Test_redirectTo(t *testing.T) {
 		code    string
 		link    string
 	}{
-		// TODO: Add test cases.
+
 		{name: "Positive",
 			want:    want{code: 307},
 			request: "http://localhost:8080/AAAAA",
@@ -72,8 +73,9 @@ func Test_redirectTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db = make(map[string]string)
-			db[tt.code] = tt.link
+			db = storage.NewStore()
+			db.AddUrl(tt.code, tt.link)
+
 			r := mux.NewRouter()
 			r.HandleFunc("/{id}", redirectTo)
 			w2 := httptest.NewRecorder()

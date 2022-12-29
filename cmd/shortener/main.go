@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"io"
 	"log"
@@ -32,7 +33,7 @@ func isValidURL(token string) bool {
 	return true
 }
 
-var db map[string]string
+var db storage.Store
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
@@ -46,7 +47,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		code := generateRandomString()
-		db[code] = string(s)
+		db.AddUrl(code, string(s))
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("content-type", "plain/text")
 		w.Write([]byte("http://localhost:8080/" + code))
@@ -57,8 +58,8 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
-	link, ok := db[shortLink]
-	if !ok {
+	link, ok := db.GetURL(shortLink)
+	if ok != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -67,7 +68,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db = make(map[string]string)
+	db = storage.NewStore()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage)
 	router.HandleFunc("/{id}", redirectTo)
