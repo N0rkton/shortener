@@ -74,8 +74,7 @@ func Test_redirectTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db = storage.NewStore()
-			db.AddUrl(tt.code, tt.link)
-
+			db.AddURL(tt.code, tt.link)
 			r := mux.NewRouter()
 			r.HandleFunc("/{id}", redirectTo)
 			w2 := httptest.NewRecorder()
