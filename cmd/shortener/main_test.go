@@ -34,7 +34,7 @@ func Test_indexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db.Db = make(map[string]string)
+			db.DB = make(map[string]string)
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
@@ -72,7 +72,7 @@ func Test_redirectTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db.Db = make(map[string]string)
+			db.DB = make(map[string]string)
 			db.AddURL(tt.code, tt.link)
 			r := mux.NewRouter()
 			r.HandleFunc("/{id}", redirectTo)

@@ -7,16 +7,16 @@ type Storage interface {
 	GetURL(url string) (string, error)
 }
 type Store struct {
-	Db map[string]string
+	DB map[string]string
 }
 
 func (sm *Store) AddURL(code string, url string) error {
-	sm.Db[code] = url
+	sm.DB[code] = url
 	return nil
 }
 
 func (sm *Store) GetURL(url string) (string, error) {
-	link, ok := sm.Db[url]
+	link, ok := sm.DB[url]
 	if !ok {
 		return "", errors.New("not found")
 	}
