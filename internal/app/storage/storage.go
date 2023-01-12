@@ -6,19 +6,41 @@ type Storage interface {
 	AddURL(code string, url string) error
 	GetURL(url string) (string, error)
 }
-type Store struct {
-	DB map[string]string
+type MemoryStorage struct {
+	db map[string]string
 }
 
-func (sm *Store) AddURL(code string, url string) error {
-	sm.DB[code] = url
+func NewMemoryStorage() Storage {
+	return &MemoryStorage{db: make(map[string]string)}
+}
+func (sm *MemoryStorage) AddURL(code string, url string) error {
+	sm.db[code] = url
 	return nil
 }
 
-func (sm *Store) GetURL(url string) (string, error) {
-	link, ok := sm.DB[url]
+func (sm *MemoryStorage) GetURL(url string) (string, error) {
+	link, ok := sm.db[url]
 	if !ok {
 		return "", errors.New("not found")
 	}
 	return link, nil
+}
+
+type StorageMock struct {
+}
+
+func (m *StorageMock) AddURL(code string, url string) error {
+	return nil
+}
+
+func (m *StorageMock) GetURL(url string) (string, error) {
+
+	if url != "ShortedURL" {
+		return "", errors.New("not found")
+	}
+	return "https://ya.ru", nil
+}
+
+func NewStorageMock() Storage {
+	return &StorageMock{}
 }

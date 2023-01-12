@@ -64,10 +64,10 @@ func isValidURL(token string) bool {
 	return err == nil && u.Host != ""
 }
 
-var db storage.Store
+var db storage.Storage
 
 func main() {
-	db.DB = make(map[string]string)
+	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
