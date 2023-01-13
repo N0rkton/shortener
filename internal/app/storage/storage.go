@@ -25,22 +25,3 @@ func (sm *MemoryStorage) GetURL(url string) (string, error) {
 	}
 	return link, nil
 }
-
-type StorageMock struct {
-}
-
-func (m *StorageMock) AddURL(code string, url string) error {
-	return nil
-}
-
-func (m *StorageMock) GetURL(url string) (string, error) {
-
-	if url != "ShortedURL" {
-		return "", errors.New("not found")
-	}
-	return "https://ya.ru", nil
-}
-
-func NewStorageMock() Storage {
-	return &StorageMock{}
-}
