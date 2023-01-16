@@ -18,17 +18,17 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if !isValidURL(b.Url) {
+	if !isValidURL(b.URL) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	code := generateRandomString()
-	db.AddURL(code, b.Url)
+	db.AddURL(code, b.URL)
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("content-type", "application/json")
 	var res response
 	res.Result = addr + code
-	resp, _ := json.Marshal(r)
+	resp, _ := json.Marshal(res)
 	w.Write(resp)
 }
 
@@ -87,7 +87,7 @@ func isValidURL(token string) bool {
 }
 
 type body struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 type response struct {
 	Result string `json:"result"`
