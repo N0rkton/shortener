@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
@@ -26,9 +27,14 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 	db.AddURL(code, b.URL)
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
+	baseURL := os.Getenv("BASE_URL")
 	var res response
-	res.Result = addr + code
+	if baseURL == "" {
+		res.Result = addr + code
+
+	} else {
+		res.Result = baseURL + code
+	}
 	resp, _ := json.Marshal(res)
 	w.Write(resp)
 }
@@ -49,10 +55,15 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	w.Header().Set("content-type", "plain/text")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(addr + code))
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		w.Write([]byte(addr + code))
+		return
+	}
+	w.Write([]byte(baseURL + code))
+
 }
 
 func redirectTo(w http.ResponseWriter, r *http.Request) {
@@ -98,10 +109,14 @@ type response struct {
 var db storage.Storage
 
 func main() {
+	serverAdress := os.Getenv("SERVER_ADDRESS")
+	if serverAdress == "" {
+		serverAdress = "localhost:8080"
+	}
 	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
-	log.Fatal(http.ListenAndServe("localhost:8080", router))
+	log.Fatal(http.ListenAndServe(serverAdress, router))
 }
