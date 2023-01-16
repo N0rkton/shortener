@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -40,6 +41,44 @@ func Test_indexPage(t *testing.T) {
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(indexPage)
+			h(w, request)
+			result := w.Result()
+			assert.Equal(t, tt.want.code, result.StatusCode)
+			defer result.Body.Close()
+		})
+	}
+}
+
+func Test_jsonIndexPage(t *testing.T) {
+	type want struct {
+		code int
+	}
+
+	tests := []struct {
+		name    string
+		want    want
+		request string
+		body    []byte
+	}{
+
+		{name: "Positive",
+			want:    want{code: 201},
+			request: "http://localhost:8080/",
+			body:    []byte(`{"url":"http://localhost:8080/BpLnf"}`),
+		},
+		{name: "Negative",
+			want:    want{code: 400},
+			request: "http://localhost:8080/",
+			body:    []byte(`{"result":"http://localhost:8080/BpLnf"}`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db = storage.NewStorageMock()
+			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
+			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
+			w := httptest.NewRecorder()
+			h := http.HandlerFunc(jsonIndexPage)
 			h(w, request)
 			result := w.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)

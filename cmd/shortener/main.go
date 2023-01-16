@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"io"
@@ -9,6 +10,27 @@ import (
 	"net/http"
 	"net/url"
 )
+
+func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
+	var b body
+	err := json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if !isValidURL(b.Url) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	code := generateRandomString()
+	db.AddURL(code, b.Url)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("content-type", "application/json")
+	var res response
+	res.Result = addr + code
+	resp, _ := json.Marshal(r)
+	w.Write(resp)
+}
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	s, err := io.ReadAll(r.Body)
@@ -64,12 +86,20 @@ func isValidURL(token string) bool {
 	return err == nil && u.Host != ""
 }
 
+type body struct {
+	Url string `json:"url"`
+}
+type response struct {
+	Result string `json:"result"`
+}
+
 var db storage.Storage
 
 func main() {
 	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
+	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe("localhost:8080", router))
 }
