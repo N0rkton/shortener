@@ -33,7 +33,7 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		res.Result = addr + code
 
 	} else {
-		res.Result = baseURL + code
+		res.Result = baseURL + "/" + code
 	}
 	resp, _ := json.Marshal(res)
 	w.Write(resp)
@@ -62,7 +62,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(addr + code))
 		return
 	}
-	w.Write([]byte(baseURL + code))
+	w.Write([]byte(baseURL + "/" + code))
 
 }
 
