@@ -24,8 +24,9 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 	}
 	code := generateRandomString()
 	db.AddURL(code, b.URL)
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
 	var res response
 	res.Result = addr + code
 	resp, _ := json.Marshal(res)
@@ -48,8 +49,9 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+
 	w.Header().Set("content-type", "plain/text")
+	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(addr + code))
 }
 

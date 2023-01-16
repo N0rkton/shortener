@@ -76,7 +76,7 @@ func Test_jsonIndexPage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
-			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
+			request.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(jsonIndexPage)
 			h(w, request)
