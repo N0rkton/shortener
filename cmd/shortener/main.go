@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
@@ -24,7 +25,12 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := generateRandomString()
-	db.AddURL(code, b.URL)
+	ok := db.AddURL(code, b.URL)
+	if ok != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	writeToFile(code, b.URL)
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	baseURL := os.Getenv("BASE_URL")
@@ -55,6 +61,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	writeToFile(code, string(s))
 	w.Header().Set("content-type", "plain/text")
 	w.WriteHeader(http.StatusCreated)
 	baseURL := os.Getenv("BASE_URL")
@@ -69,6 +76,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
+	readFromFile()
 	link, ok := db.GetURL(shortLink)
 	if ok != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -76,11 +84,46 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Location", link)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+	return
+
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const urlLen = 5
 const addr = "http://localhost:8080/"
+
+func readFromFile() {
+	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
+	var text map[string]string
+	if fileStoragePath != "" {
+		file, _ := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			_ = json.Unmarshal(scanner.Bytes(), &text)
+			for key, value := range text {
+				db.AddURL(key, value)
+			}
+		}
+	}
+}
+func writeToFile(code string, s string) {
+	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
+	if fileStoragePath != "" {
+		file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+		if err != nil {
+			println("cant open file")
+			return
+		}
+		text, err := json.Marshal(map[string]string{code: s})
+		if err != nil {
+			print(err)
+		}
+		text = append(text, '\n')
+		file.Write(text)
+		defer file.Close()
+	}
+}
 
 func generateRandomString() string {
 	b := make([]byte, urlLen)
