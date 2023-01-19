@@ -98,7 +98,7 @@ func readFromFile() {
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			_ = json.Unmarshal(scanner.Bytes(), &text)
+			json.Unmarshal(scanner.Bytes(), &text)
 			for key, value := range text {
 				db.AddURL(key, value)
 			}
@@ -108,21 +108,14 @@ func readFromFile() {
 func writeToFile(code string, s string) {
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePath != "" {
-		file, err := os.OpenFile("/Users/shvm/Desktop/storage.txt", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+		file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+		defer file.Close()
 		if err != nil {
-			println("cant open file")
 			return
 		}
-		text, err := json.Marshal(map[string]string{code: s})
-		if err != nil {
-			print(err)
-		}
+		text, _ := json.Marshal(map[string]string{code: s})
 		text = append(text, '\n')
-		n, err := file.Write(text)
-		if err != nil {
-			print(err, n)
-		}
-		defer file.Close()
+		file.Write(text)
 	}
 }
 
