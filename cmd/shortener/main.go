@@ -84,8 +84,6 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Location", link)
 	w.WriteHeader(http.StatusTemporaryRedirect)
-	return
-
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
@@ -110,7 +108,7 @@ func readFromFile() {
 func writeToFile(code string, s string) {
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePath != "" {
-		file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+		file, err := os.OpenFile("/Users/shvm/Desktop/storage.txt", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 		if err != nil {
 			println("cant open file")
 			return
@@ -120,7 +118,10 @@ func writeToFile(code string, s string) {
 			print(err)
 		}
 		text = append(text, '\n')
-		file.Write(text)
+		n, err := file.Write(text)
+		if err != nil {
+			print(err, n)
+		}
 		defer file.Close()
 	}
 }
@@ -152,14 +153,14 @@ type response struct {
 var db storage.Storage
 
 func main() {
-	serverAdress := os.Getenv("SERVER_ADDRESS")
-	if serverAdress == "" {
-		serverAdress = "localhost:8080"
+	serverAddress := os.Getenv("SERVER_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "localhost:8080"
 	}
 	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
-	log.Fatal(http.ListenAndServe(serverAdress, router))
+	log.Fatal(http.ListenAndServe(serverAddress, router))
 }
