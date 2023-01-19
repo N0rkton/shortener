@@ -94,7 +94,10 @@ func readFromFile() {
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	var text map[string]string
 	if fileStoragePath != "" {
-		file, _ := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
+		file, err := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
+		if err != nil {
+			return
+		}
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -109,10 +112,10 @@ func writeToFile(code string, s string) {
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePath != "" {
 		file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
-		defer file.Close()
 		if err != nil {
 			return
 		}
+		defer file.Close()
 		text, _ := json.Marshal(map[string]string{code: s})
 		text = append(text, '\n')
 		file.Write(text)
