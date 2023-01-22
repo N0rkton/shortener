@@ -37,7 +37,7 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 	baseURL := os.Getenv("BASE_URL")
 	var res response
 	if baseURL == "" {
-		res.Result = *b + code
+		res.Result = *b + "/" + code
 	} else {
 		res.Result = baseURL + "/" + code
 	}
@@ -66,7 +66,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
-		w.Write([]byte(*b + code))
+		w.Write([]byte(*b + "/" + code))
 		return
 	}
 	w.Write([]byte(baseURL + "/" + code))
@@ -88,7 +88,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const urlLen = 5
-const addr = "http://localhost:8080/"
+const addr = "http://localhost:8080"
 
 var (
 	a *string
@@ -125,6 +125,9 @@ func readFromFile() {
 }
 func writeToFile(code string, s string) {
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
+	if fileStoragePath == "" {
+		fileStoragePath = *f
+	}
 	if fileStoragePath != "" {
 		file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 		if err != nil {
