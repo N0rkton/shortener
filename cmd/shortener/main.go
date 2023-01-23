@@ -51,8 +51,8 @@ type response struct {
 func isGzip(r *http.Request) io.Reader {
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
 		gz, _ := gzip.NewReader(r.Body)
-		return gz
 		defer gz.Close()
+		return gz
 	}
 	return r.Body
 }
