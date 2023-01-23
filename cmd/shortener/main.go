@@ -48,9 +48,18 @@ type response struct {
 	Result string `json:"result"`
 }
 
+func isGzip(r *http.Request) io.Reader {
+	if r.Header.Get(`Content-Encoding`) == `gzip` {
+		gz, _ := gzip.NewReader(r.Body)
+		return gz
+		defer gz.Close()
+	}
+	return r.Body
+}
 func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
+	read := isGzip(r)
 	var body body
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.NewDecoder(read).Decode(&body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -80,7 +89,8 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
-	s, err := io.ReadAll(r.Body)
+	read := isGzip(r)
+	s, err := io.ReadAll(read)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
