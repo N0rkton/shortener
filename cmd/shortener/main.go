@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"github.com/N0rkton/shortener/internal/app/storage"
@@ -12,7 +13,40 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
+
+type gzipWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
+}
+
+func (w gzipWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+func gzipHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			io.WriteString(w, err.Error())
+			return
+		}
+		defer gz.Close()
+		w.Header().Set("Content-Encoding", "gzip")
+		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+	})
+}
+
+type body struct {
+	URL string `json:"url"`
+}
+type response struct {
+	Result string `json:"result"`
+}
 
 func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 	var body body
@@ -101,7 +135,6 @@ func init() {
 	b = flag.String("b", addr, "port number")
 	f = flag.String("f", "", "file path")
 }
-
 func readFromFile() {
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	var text map[string]string
@@ -139,7 +172,6 @@ func writeToFile(code string, s string) {
 		file.Write(text)
 	}
 }
-
 func generateRandomString() string {
 	b := make([]byte, urlLen)
 	for i := range b {
@@ -147,7 +179,6 @@ func generateRandomString() string {
 	}
 	return string(b)
 }
-
 func isValidURL(token string) bool {
 	_, err := url.ParseRequestURI(token)
 	if err != nil {
@@ -155,13 +186,6 @@ func isValidURL(token string) bool {
 	}
 	u, err := url.Parse(token)
 	return err == nil && u.Host != ""
-}
-
-type body struct {
-	URL string `json:"url"`
-}
-type response struct {
-	Result string `json:"result"`
 }
 
 var db storage.Storage
@@ -175,8 +199,8 @@ func main() {
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
 	serverAddress := os.Getenv("SERVER_ADDRESS")
 	if serverAddress == "" {
-		log.Fatal(http.ListenAndServe(*a, router))
+		log.Fatal(http.ListenAndServe(*a, gzipHandle(router)))
 	} else {
-		log.Fatal(http.ListenAndServe(serverAddress, router))
+		log.Fatal(http.ListenAndServe(serverAddress, gzipHandle(router)))
 	}
 }
