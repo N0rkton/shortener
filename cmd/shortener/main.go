@@ -66,13 +66,13 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !isValidURL(body.URL) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
 	code := generateRandomString()
 	ok := db.AddURL(code, body.URL)
 	if ok != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
 	writeToFile(code, body.URL)
