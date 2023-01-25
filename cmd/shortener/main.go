@@ -27,6 +27,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 func gzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			r.Body = gzipDecode(r)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -37,6 +38,7 @@ func gzipHandle(next http.Handler) http.Handler {
 		}
 		defer gz.Close()
 		w.Header().Set("Content-Encoding", "gzip")
+		r.Body = gzipDecode(r)
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 	})
 }
@@ -48,7 +50,7 @@ type response struct {
 	Result string `json:"result"`
 }
 
-func isGzip(r *http.Request) io.Reader {
+func gzipDecode(r *http.Request) io.ReadCloser {
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
 		gz, _ := gzip.NewReader(r.Body)
 		defer gz.Close()
@@ -57,40 +59,36 @@ func isGzip(r *http.Request) io.Reader {
 	return r.Body
 }
 func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
-	read := isGzip(r)
 	var body body
-	err := json.NewDecoder(read).Decode(&body)
+	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if !isValidURL(body.URL) {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	code := generateRandomString()
 	ok := db.AddURL(code, body.URL)
 	if ok != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	writeToFile(code, body.URL)
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	baseURL := os.Getenv("BASE_URL")
 	var res response
-	if baseURL == "" {
-		res.Result = *b + "/" + code
-	} else {
-		res.Result = baseURL + "/" + code
+	res.Result = *config.baseURL + "/" + code
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		log.Println("jsonIndexPage: encoding response:", err) // лучше это залоггировать тк это на нашей стороне проблема
+		http.Error(w, "unable to encode response", http.StatusInternalServerError)
+		return
 	}
-	resp, _ := json.Marshal(res)
-	w.Write(resp)
 }
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
-	read := isGzip(r)
-	s, err := io.ReadAll(read)
+	s, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -108,13 +106,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 	writeToFile(code, string(s))
 	w.Header().Set("content-type", "plain/text")
 	w.WriteHeader(http.StatusCreated)
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		w.Write([]byte(*b + "/" + code))
-		return
-	}
-	w.Write([]byte(baseURL + "/" + code))
-
+	w.Write([]byte(*config.baseURL + "/" + code))
 }
 
 func redirectTo(w http.ResponseWriter, r *http.Request) {
@@ -132,27 +124,23 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const urlLen = 5
-const addr = "http://localhost:8080"
+const defaultBaseURL = "http://localhost:8080"
 
-var (
-	a *string
-	b *string
-	f *string
-)
+var config struct {
+	serverAddress   *string
+	baseURL         *string
+	fileStoragePath *string
+}
 
 func init() {
-	a = flag.String("a", "localhost:8080", "Domain name")
-	b = flag.String("b", addr, "port number")
-	f = flag.String("f", "", "file path")
+	config.serverAddress = flag.String("serverAddress", "localhost:8080", "server address")
+	config.baseURL = flag.String("baseURL", defaultBaseURL, "base URL")
+	config.fileStoragePath = flag.String("fileStoragePath", "", "file path")
 }
 func readFromFile() {
-	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	var text map[string]string
-	if fileStoragePath == "" {
-		fileStoragePath = *f
-	}
-	if fileStoragePath != "" {
-		file, err := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
+	if *config.fileStoragePath != "" {
+		file, err := os.OpenFile(*config.fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
 		if err != nil {
 			return
 		}
@@ -167,12 +155,8 @@ func readFromFile() {
 	}
 }
 func writeToFile(code string, s string) {
-	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
-	if fileStoragePath == "" {
-		fileStoragePath = *f
-	}
-	if fileStoragePath != "" {
-		file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+	if *config.fileStoragePath != "" {
+		file, err := os.OpenFile(*config.fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 		if err != nil {
 			return
 		}
@@ -202,15 +186,22 @@ var db storage.Storage
 
 func main() {
 	flag.Parse()
+	serverAddressEnv := os.Getenv("SERVER_ADDRESS")
+	if serverAddressEnv != "" {
+		config.serverAddress = &serverAddressEnv
+	}
+	baseURLEnv := os.Getenv("BASE_URL")
+	if baseURLEnv != "" {
+		config.baseURL = &baseURLEnv
+	}
+	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
+	if fileStoragePathEnv != "" {
+		config.fileStoragePath = &fileStoragePathEnv
+	}
 	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
-	serverAddress := os.Getenv("SERVER_ADDRESS")
-	if serverAddress == "" {
-		log.Fatal(http.ListenAndServe(*a, gzipHandle(router)))
-	} else {
-		log.Fatal(http.ListenAndServe(serverAddress, gzipHandle(router)))
-	}
+	log.Fatal(http.ListenAndServe(*config.serverAddress, gzipHandle(router)))
 }
