@@ -94,13 +94,13 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !isValidURL(string(s)) {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
 	code := generateRandomString()
 	ok := db.AddURL(code, string(s))
 	if ok != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
 	writeToFile(code, string(s))
@@ -115,7 +115,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	readFromFile()
 	link, ok := db.GetURL(shortLink)
 	if ok != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Location", link)
@@ -133,9 +133,9 @@ var config struct {
 }
 
 func init() {
-	config.serverAddress = flag.String("serverAddress", "localhost:8080", "server address")
-	config.baseURL = flag.String("baseURL", defaultBaseURL, "base URL")
-	config.fileStoragePath = flag.String("fileStoragePath", "", "file path")
+	config.serverAddress = flag.String("a", "localhost:8080", "server address")
+	config.baseURL = flag.String("b", defaultBaseURL, "base URL")
+	config.fileStoragePath = flag.String("f", "", "file path")
 }
 func readFromFile() {
 	var text map[string]string
