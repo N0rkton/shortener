@@ -122,7 +122,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	shortLink := vars["id"]
 
 	link, ok := fileStorage.GetURL(shortLink)
-	if link != "" {
+	if link != "" && ok == nil {
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
