@@ -30,8 +30,7 @@ func (f *FileStorage) AddURL(code string, url string) error {
 
 func (f *FileStorage) GetURL(url string) (string, error) {
 	var text map[string]string
-	var db Storage
-	db = NewMemoryStorage()
+	db := NewMemoryStorage()
 	if f.fileStoragePath != "" {
 		file, err := os.OpenFile(f.fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
 		if err != nil {
