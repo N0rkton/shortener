@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"compress/gzip"
 	"encoding/json"
 	"flag"
@@ -75,7 +74,12 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	writeToFile(code, body.URL)
+	ok = fileStorage.AddURL(code, body.URL)
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
+		return
+	}
+
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	var res response
@@ -103,7 +107,11 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	writeToFile(code, string(s))
+	ok = fileStorage.AddURL(code, string(s))
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("content-type", "plain/text")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(*config.baseURL + "/" + code))
@@ -112,8 +120,14 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
-	readFromFile()
-	link, ok := db.GetURL(shortLink)
+
+	link, ok := fileStorage.GetURL(shortLink)
+	if link != "" {
+		w.Header().Set("Location", link)
+		w.WriteHeader(http.StatusTemporaryRedirect)
+		return
+	}
+	link, ok = db.GetURL(shortLink)
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
@@ -137,35 +151,7 @@ func init() {
 	config.baseURL = flag.String("b", defaultBaseURL, "base URL")
 	config.fileStoragePath = flag.String("f", "", "file path")
 }
-func readFromFile() {
-	var text map[string]string
-	if *config.fileStoragePath != "" {
-		file, err := os.OpenFile(*config.fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
-		if err != nil {
-			return
-		}
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			json.Unmarshal(scanner.Bytes(), &text)
-			for key, value := range text {
-				db.AddURL(key, value)
-			}
-		}
-	}
-}
-func writeToFile(code string, s string) {
-	if *config.fileStoragePath != "" {
-		file, err := os.OpenFile(*config.fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
-		if err != nil {
-			return
-		}
-		defer file.Close()
-		text, _ := json.Marshal(map[string]string{code: s})
-		text = append(text, '\n')
-		file.Write(text)
-	}
-}
+
 func generateRandomString() string {
 	b := make([]byte, urlLen)
 	for i := range b {
@@ -183,6 +169,7 @@ func isValidURL(token string) bool {
 }
 
 var db storage.Storage
+var fileStorage storage.Storage
 
 func main() {
 	flag.Parse()
@@ -198,6 +185,7 @@ func main() {
 	if fileStoragePathEnv != "" {
 		config.fileStoragePath = &fileStoragePathEnv
 	}
+	fileStorage = storage.NewFileStorage(*config.fileStoragePath)
 	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)

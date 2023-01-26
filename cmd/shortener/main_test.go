@@ -36,6 +36,7 @@ func Test_indexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fileStorage = storage.NewFileStorage("")
 			db = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
