@@ -185,7 +185,7 @@ func main() {
 	if fileStoragePathEnv != "" {
 		config.fileStoragePath = &fileStoragePathEnv
 	}
-	fileStorage = storage.NewFileStorage(*config.fileStoragePath)
+	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	db = storage.NewMemoryStorage()
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
