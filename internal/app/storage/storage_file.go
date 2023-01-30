@@ -19,16 +19,17 @@ func NewFileStorage(path string) (Storage, error) {
 		return nil, fmt.Errorf("unable to open %s: %w", path, err)
 	}
 	defer file.Close()
-
 	memDB := NewMemoryStorage()
 	scanner := bufio.NewScanner(file)
-	var text map[string]string
+	var text map[string]map[string]string
 	for scanner.Scan() {
 		if err := json.Unmarshal(scanner.Bytes(), &text); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal metric from file: %w", err)
 		}
 		for key, value := range text {
-			memDB.AddURL(key, value)
+			for k, v := range value {
+				memDB.AddURL(key, k, v)
+			}
 		}
 	}
 	return &FileStorage{
@@ -37,9 +38,9 @@ func NewFileStorage(path string) (Storage, error) {
 	}, nil
 }
 
-func (fs *FileStorage) AddURL(code string, url string) error {
-
-	text, err := json.Marshal(map[string]string{code: url})
+func (fs *FileStorage) AddURL(id string, code string, url string) error {
+	fs.memStorage.AddURL(id, code, url)
+	text, err := json.Marshal(map[string]map[string]string{id: {code: url}})
 	if err != nil {
 		return errors.New("json error")
 	}
@@ -50,4 +51,7 @@ func (fs *FileStorage) AddURL(code string, url string) error {
 
 func (fs *FileStorage) GetURL(url string) (string, error) {
 	return fs.memStorage.GetURL(url)
+}
+func (fs *FileStorage) GetURLById(id string) (map[string]string, error) {
+	return fs.memStorage.GetURLById(id)
 }

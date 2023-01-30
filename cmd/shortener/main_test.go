@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,7 +38,12 @@ func Test_indexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fileStorage = storage.NewFileStorage("")
+			var err error
+			secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			if err != nil {
+				log.Fatal(err)
+			}
+			fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 			db = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
@@ -75,6 +82,11 @@ func Test_jsonIndexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
+			secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			if err != nil {
+				log.Fatal(err)
+			}
 			db = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
 			request.Header.Set("Content-Type", "application/json")

@@ -2,13 +2,17 @@ package main
 
 import (
 	"compress/gzip"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
+	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -48,6 +52,10 @@ type body struct {
 type response struct {
 	Result string `json:"result"`
 }
+type idResponse struct {
+	Short_url    string `json:"short_url"`
+	Original_url string `json:"original_url"`
+}
 
 func gzipDecode(r *http.Request) io.ReadCloser {
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
@@ -58,8 +66,26 @@ func gzipDecode(r *http.Request) io.ReadCloser {
 	return r.Body
 }
 func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
+	var value string
+	value, err := cookies.ReadEncrypted(r, "UserId", secret)
+	if err != nil {
+		value = generateRandomString(3)
+		cookie := http.Cookie{
+			Name:     "UserId",
+			Value:    value,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   true,
+		}
+		err = cookies.WriteEncrypted(w, cookie, secret)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+	}
 	var body body
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err = json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -68,13 +94,15 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	code := generateRandomString()
-	ok := db.AddURL(code, body.URL)
+	code := generateRandomString(urlLen)
+	ok := db.AddURL(value, code, body.URL)
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	ok = fileStorage.AddURL(code, body.URL)
+	if fileStorage != nil {
+		ok = fileStorage.AddURL(value, code, body.URL)
+	}
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
@@ -85,13 +113,31 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 	var res response
 	res.Result = *config.baseURL + "/" + code
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		log.Println("jsonIndexPage: encoding response:", err) // лучше это залоггировать тк это на нашей стороне проблема
+		log.Println("jsonIndexPage: encoding response:", err)
 		http.Error(w, "unable to encode response", http.StatusInternalServerError)
 		return
 	}
 }
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
+	var value string
+	value, err := cookies.ReadEncrypted(r, "UserId", secret)
+	if err != nil {
+		value = generateRandomString(3)
+		cookie := http.Cookie{
+			Name:     "UserId",
+			Value:    value,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+		}
+		err = cookies.WriteEncrypted(w, cookie, secret)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+	}
 	s, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -101,13 +147,15 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	code := generateRandomString()
-	ok := db.AddURL(code, string(s))
+	code := generateRandomString(urlLen)
+	ok := db.AddURL(value, code, string(s))
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	ok = fileStorage.AddURL(code, string(s))
+	if fileStorage != nil {
+		ok = fileStorage.AddURL(value, code, string(s))
+	}
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
@@ -120,8 +168,11 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
-
-	link, ok := fileStorage.GetURL(shortLink)
+	var link string
+	var ok error
+	if fileStorage != nil {
+		link, ok = fileStorage.GetURL(shortLink)
+	}
 	if link != "" && ok == nil {
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -135,8 +186,50 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", link)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
+func listURL(w http.ResponseWriter, r *http.Request) {
+	var idR []idResponse
+	var shortAndLongURL map[string]string
+	var ok = errors.New("not found")
+	value, err := cookies.ReadEncrypted(r, "UserId", secret)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if fileStorage != nil {
+		shortAndLongURL, ok = fileStorage.GetURLById(value)
+	}
+	if ok == nil {
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		for k, v := range shortAndLongURL {
+			idR = append(idR, idResponse{Short_url: *config.baseURL + "/" + k, Original_url: v})
+		}
+		if err := json.NewEncoder(w).Encode(idR); err != nil {
+			log.Println("jsonIndexPage: encoding response:", err)
+			http.Error(w, "unable to encode response", http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+	shortAndLongURL, err = db.GetURLById(value)
+	if err != nil || shortAndLongURL == nil {
+		http.Error(w, "no shorted urls", http.StatusNoContent)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	for k, v := range shortAndLongURL {
+		idR = append(idR, idResponse{Short_url: *config.baseURL + "/" + k, Original_url: v})
+	}
+	if err := json.NewEncoder(w).Encode(idR); err != nil {
+		log.Println("jsonIndexPage: encoding response:", err)
+		http.Error(w, "unable to encode response", http.StatusInternalServerError)
+		return
+	}
+}
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+var secret []byte
+
 const urlLen = 5
 const defaultBaseURL = "http://localhost:8080"
 
@@ -152,13 +245,12 @@ func init() {
 	config.fileStoragePath = flag.String("f", "", "file path")
 }
 
-func generateRandomString() string {
-	b := make([]byte, urlLen)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
+func generateRandomString(len int) string {
+	b := make([]byte, len)
+	rand.Read(b)
+	return base64.StdEncoding.EncodeToString(b)
 }
+
 func isValidURL(token string) bool {
 	_, err := url.ParseRequestURI(token)
 	if err != nil {
@@ -187,9 +279,15 @@ func main() {
 	}
 	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	db = storage.NewMemoryStorage()
+	var err error
+	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+	if err != nil {
+		log.Fatal(err)
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
+	router.HandleFunc("/api/user/urls", listURL).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(*config.serverAddress, gzipHandle(router)))
 }
