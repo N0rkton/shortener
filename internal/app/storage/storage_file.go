@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,18 +20,17 @@ func NewFileStorage(path string) (Storage, error) {
 	}
 	defer file.Close()
 	memDB := NewMemoryStorage()
-	scanner := bufio.NewScanner(file)
+	dat, _ := io.ReadAll(file)
 	var text map[string]map[string]string
-	for scanner.Scan() {
-		if err := json.Unmarshal(scanner.Bytes(), &text); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal metric from file: %w", err)
-		}
-		for key, value := range text {
-			for k, v := range value {
-				memDB.AddURL(key, k, v)
-			}
+	if err := json.Unmarshal(dat, &text); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal metric from file: %w", err)
+	}
+	for key, value := range text {
+		for k, v := range value {
+			memDB.AddURL(key, k, v)
 		}
 	}
+
 	return &FileStorage{
 		memStorage: memDB,
 		f:          file,
