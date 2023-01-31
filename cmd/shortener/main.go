@@ -277,8 +277,8 @@ func main() {
 	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePathEnv != "" {
 		config.fileStoragePath = &fileStoragePathEnv
-		fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	}
+	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	db = storage.NewMemoryStorage()
 	var err error
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
