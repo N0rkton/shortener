@@ -44,7 +44,7 @@ func Test_indexPage(t *testing.T) {
 				log.Fatal(err)
 			}
 			fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
-			db = storage.NewStorageMock()
+			localMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
@@ -87,7 +87,7 @@ func Test_jsonIndexPage(t *testing.T) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			db = storage.NewStorageMock()
+			localMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
 			request.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
@@ -123,7 +123,7 @@ func Test_redirectTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db = storage.NewStorageMock()
+			localMem = storage.NewStorageMock()
 			r := mux.NewRouter()
 			r.HandleFunc("/{id}", redirectTo)
 			w2 := httptest.NewRecorder()

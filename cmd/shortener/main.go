@@ -2,21 +2,25 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/rand"
 	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 type gzipWriter struct {
@@ -95,7 +99,7 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := generateRandomString(urlLen)
-	ok := db.AddURL(value, code, body.URL)
+	ok := localMem.AddURL(value, code, body.URL)
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
@@ -148,7 +152,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := generateRandomString(urlLen)
-	ok := db.AddURL(value, code, string(s))
+	ok := localMem.AddURL(value, code, string(s))
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
@@ -178,7 +182,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
-	link, ok = db.GetURL(shortLink)
+	link, ok = localMem.GetURL(shortLink)
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
@@ -211,7 +215,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	shortAndLongURL, err = db.GetURLByID(value)
+	shortAndLongURL, err = localMem.GetURLByID(value)
 	if err != nil || shortAndLongURL == nil {
 		http.Error(w, "no shorted urls", http.StatusNoContent)
 		return
@@ -227,6 +231,21 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+func pingDB(w http.ResponseWriter, r *http.Request) {
+	conn, err := pgx.Connect(context.Background(), *config.dbAddress)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		//os.Exit(1)
+	}
+	defer conn.Close(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err = conn.Ping(ctx); err != nil {
+		http.Error(w, "unable to ping db", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 var secret []byte
 
@@ -237,12 +256,14 @@ var config struct {
 	serverAddress   *string
 	baseURL         *string
 	fileStoragePath *string
+	dbAddress       *string
 }
 
 func init() {
 	config.serverAddress = flag.String("a", "localhost:8080", "server address")
 	config.baseURL = flag.String("b", defaultBaseURL, "base URL")
 	config.fileStoragePath = flag.String("f", "", "file path")
+	config.dbAddress = flag.String("d", "", "data base connection address")
 }
 
 func generateRandomString(len int) string {
@@ -260,11 +281,15 @@ func isValidURL(token string) bool {
 	return err == nil && u.Host != ""
 }
 
-var db storage.Storage
+var localMem storage.Storage
 var fileStorage storage.Storage
 
 func main() {
 	flag.Parse()
+	dbAddressEnv := os.Getenv("DATABASE_DSN")
+	if dbAddressEnv != "" {
+		config.dbAddress = &dbAddressEnv
+	}
 	serverAddressEnv := os.Getenv("SERVER_ADDRESS")
 	if serverAddressEnv != "" {
 		config.serverAddress = &serverAddressEnv
@@ -273,14 +298,13 @@ func main() {
 	if baseURLEnv != "" {
 		config.baseURL = &baseURLEnv
 	}
-	//os.Setenv("FILE_STORAGE_PATH", "/Users/shvm/Desktop/1.txt")
 	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePathEnv != "" {
 		config.fileStoragePath = &fileStoragePathEnv
 	}
-	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
-	db = storage.NewMemoryStorage()
 	var err error
+	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
+	localMem = storage.NewMemoryStorage()
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
 	if err != nil {
 		log.Fatal(err)
@@ -290,5 +314,6 @@ func main() {
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", listURL).Methods(http.MethodGet)
+	router.HandleFunc("/ping", pingDB).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(*config.serverAddress, gzipHandle(router)))
 }
