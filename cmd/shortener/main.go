@@ -192,7 +192,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	var ok = errors.New("not found")
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
 	if fileStorage != nil {
@@ -200,7 +200,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	}
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusOK)
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.baseURL + "/" + k, OriginalURL: v})
 		}
