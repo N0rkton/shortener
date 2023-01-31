@@ -1,10 +1,10 @@
 package storage
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -19,22 +19,19 @@ func NewFileStorage(path string) (Storage, error) {
 		return nil, fmt.Errorf("unable to open %s: %w", path, err)
 	}
 	defer file.Close()
+	var text []string
 	memDB := NewMemoryStorage()
-	dat, err := io.ReadAll(file)
-	if err != nil {
-		return &FileStorage{
-			memStorage: memDB,
-			f:          file,
-		}, fmt.Errorf("unable to read: %w", err)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		err = json.Unmarshal(scanner.Bytes(), &text)
+		if err != nil {
+			return &FileStorage{
+				memStorage: memDB,
+				f:          file,
+			}, fmt.Errorf("unable to unmarshall: %w", err)
+		}
+		memDB.AddURL(text[0], text[1], text[2])
 	}
-
-	if err := json.Unmarshal(dat, &memDB); err != nil {
-		return &FileStorage{
-			memStorage: memDB,
-			f:          file,
-		}, fmt.Errorf("unable to unmarshal metric from file: %w", err)
-	}
-
 	return &FileStorage{
 		memStorage: memDB,
 		f:          file,
@@ -43,17 +40,11 @@ func NewFileStorage(path string) (Storage, error) {
 
 func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	fs.memStorage.AddURL(id, code, url)
-	text, err := json.Marshal(fs.memStorage)
+	text, err := json.Marshal([]string{id, code, url})
 	if err != nil {
 		return errors.New("json error")
 	}
-	fs.f.Seek(0, io.SeekStart)
-	fs.f.Truncate(0)
-	_, err = fs.f.Write(text)
-	fmt.Println(string(text))
-	if err != nil {
-		print("json")
-	}
+	fs.f.Write(text)
 	return nil
 }
 
