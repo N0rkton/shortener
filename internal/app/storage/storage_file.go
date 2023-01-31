@@ -14,7 +14,7 @@ type FileStorage struct {
 }
 
 func NewFileStorage(path string) (Storage, error) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
+	file, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open %s: %w", path, err)
 	}
@@ -39,12 +39,20 @@ func NewFileStorage(path string) (Storage, error) {
 }
 
 func (fs *FileStorage) AddURL(id string, code string, url string) error {
+	var err error
+	fs.f, err = os.OpenFile(fs.f.Name(), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		return fmt.Errorf("unable to open %s: %w", fs.f.Name(), err)
+	}
+	print(fs.f.Name())
 	fs.memStorage.AddURL(id, code, url)
 	text, err := json.Marshal([]string{id, code, url})
 	if err != nil {
 		return errors.New("json error")
 	}
-	fs.f.Write(text)
+	text = append(text, '\n')
+	_, err = fs.f.Write(text)
+	fmt.Println(err)
 	return nil
 }
 

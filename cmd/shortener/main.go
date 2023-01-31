@@ -273,7 +273,7 @@ func main() {
 	if baseURLEnv != "" {
 		config.baseURL = &baseURLEnv
 	}
-	os.Setenv("FILE_STORAGE_PATH", "/Users/shvm/Desktop/1.txt")
+	//os.Setenv("FILE_STORAGE_PATH", "/Users/shvm/Desktop/1.txt")
 	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePathEnv != "" {
 		config.fileStoragePath = &fileStoragePathEnv
