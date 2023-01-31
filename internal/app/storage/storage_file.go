@@ -14,7 +14,7 @@ type FileStorage struct {
 }
 
 func NewFileStorage(path string) (Storage, error) {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0777)
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open %s: %w", path, err)
 	}
@@ -22,11 +22,17 @@ func NewFileStorage(path string) (Storage, error) {
 	memDB := NewMemoryStorage()
 	dat, err := io.ReadAll(file)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read: %w", err)
+		return &FileStorage{
+			memStorage: memDB,
+			f:          file,
+		}, fmt.Errorf("unable to read: %w", err)
 	}
 
 	if err := json.Unmarshal(dat, &memDB); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal metric from file: %w", err)
+		return &FileStorage{
+			memStorage: memDB,
+			f:          file,
+		}, fmt.Errorf("unable to unmarshal metric from file: %w", err)
 	}
 
 	return &FileStorage{
