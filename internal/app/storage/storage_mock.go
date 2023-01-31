@@ -16,7 +16,7 @@ func (m *StorageMock) GetURL(url string) (string, error) {
 	}
 	return "SomeLongURL", nil
 }
-func (m *StorageMock) GetURLById(id string) (map[string]string, error) {
+func (m *StorageMock) GetURLByID(id string) (map[string]string, error) {
 	if id != "1" {
 		return nil, errors.New("not found")
 	}

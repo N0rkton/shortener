@@ -53,8 +53,8 @@ type response struct {
 	Result string `json:"result"`
 }
 type idResponse struct {
-	Short_url    string `json:"short_url"`
-	Original_url string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func gzipDecode(r *http.Request) io.ReadCloser {
@@ -196,13 +196,13 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if fileStorage != nil {
-		shortAndLongURL, ok = fileStorage.GetURLById(value)
+		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		for k, v := range shortAndLongURL {
-			idR = append(idR, idResponse{Short_url: *config.baseURL + "/" + k, Original_url: v})
+			idR = append(idR, idResponse{ShortURL: *config.baseURL + "/" + k, OriginalURL: v})
 		}
 		if err := json.NewEncoder(w).Encode(idR); err != nil {
 			log.Println("jsonIndexPage: encoding response:", err)
@@ -211,7 +211,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	shortAndLongURL, err = db.GetURLById(value)
+	shortAndLongURL, err = db.GetURLByID(value)
 	if err != nil || shortAndLongURL == nil {
 		http.Error(w, "no shorted urls", http.StatusNoContent)
 		return
@@ -219,7 +219,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	for k, v := range shortAndLongURL {
-		idR = append(idR, idResponse{Short_url: *config.baseURL + "/" + k, Original_url: v})
+		idR = append(idR, idResponse{ShortURL: *config.baseURL + "/" + k, OriginalURL: v})
 	}
 	if err := json.NewEncoder(w).Encode(idR); err != nil {
 		log.Println("jsonIndexPage: encoding response:", err)

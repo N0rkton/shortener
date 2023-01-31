@@ -7,7 +7,7 @@ import (
 type Storage interface {
 	AddURL(id string, code string, url string) error
 	GetURL(url string) (string, error)
-	GetURLById(id string) (map[string]string, error)
+	GetURLByID(id string) (map[string]string, error)
 }
 type MemoryStorage struct {
 	db map[string]map[string]string
@@ -27,7 +27,7 @@ func (sm *MemoryStorage) AddURL(id string, code string, url string) error {
 }
 
 func (sm *MemoryStorage) GetURL(url string) (string, error) {
-	for k, _ := range sm.db {
+	for k := range sm.db {
 		link, ok := sm.db[k][url]
 		if ok {
 			return link, nil
@@ -36,7 +36,7 @@ func (sm *MemoryStorage) GetURL(url string) (string, error) {
 	return "", errors.New("not found")
 }
 
-func (sm *MemoryStorage) GetURLById(id string) (map[string]string, error) {
+func (sm *MemoryStorage) GetURLByID(id string) (map[string]string, error) {
 	text, ok := sm.db[id]
 	if ok {
 
