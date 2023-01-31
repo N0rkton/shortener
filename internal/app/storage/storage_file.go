@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -44,6 +45,7 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	if err != nil {
 		return errors.New("json error")
 	}
+	fs.f.Seek(0, io.SeekStart)
 	fs.f.Truncate(0)
 	fs.f.Write(text)
 	return nil

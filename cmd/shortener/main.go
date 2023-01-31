@@ -3,7 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"crypto/rand"
-	"encoding/base64"
+	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -248,7 +248,7 @@ func init() {
 func generateRandomString(len int) string {
 	b := make([]byte, len)
 	rand.Read(b)
-	return base64.StdEncoding.EncodeToString(b)
+	return base32.StdEncoding.EncodeToString(b)
 }
 
 func isValidURL(token string) bool {
