@@ -100,7 +100,7 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		ok = fileStorage.AddURL(value, code, body.URL)
 	}
 	if ok != nil {
@@ -153,7 +153,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		ok = fileStorage.AddURL(value, code, string(s))
 	}
 	if ok != nil {
@@ -170,7 +170,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	shortLink := vars["id"]
 	var link string
 	var ok error
-	if fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		link, ok = fileStorage.GetURL(shortLink)
 	}
 	if link != "" && ok == nil {
@@ -273,11 +273,12 @@ func main() {
 	if baseURLEnv != "" {
 		config.baseURL = &baseURLEnv
 	}
+	//os.Setenv("FILE_STORAGE_PATH", "/Users/shvm/Desktop/1.txt")
 	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePathEnv != "" {
 		config.fileStoragePath = &fileStoragePathEnv
+		fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	}
-	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	db = storage.NewMemoryStorage()
 	var err error
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")

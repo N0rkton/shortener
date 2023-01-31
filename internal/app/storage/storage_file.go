@@ -20,15 +20,13 @@ func NewFileStorage(path string) (Storage, error) {
 	}
 	defer file.Close()
 	memDB := NewMemoryStorage()
-	dat, _ := io.ReadAll(file)
-	var text map[string]map[string]string
-	if err := json.Unmarshal(dat, &text); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal metric from file: %w", err)
+	dat, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read: %w", err)
 	}
-	for key, value := range text {
-		for k, v := range value {
-			memDB.AddURL(key, k, v)
-		}
+
+	if err := json.Unmarshal(dat, &memDB); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal metric from file: %w", err)
 	}
 
 	return &FileStorage{
@@ -45,7 +43,11 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	}
 	fs.f.Seek(0, io.SeekStart)
 	fs.f.Truncate(0)
-	fs.f.Write(text)
+	_, err = fs.f.Write(text)
+	fmt.Println(string(text))
+	if err != nil {
+		print("json")
+	}
 	return nil
 }
 
