@@ -229,13 +229,21 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func pingDB(w http.ResponseWriter, r *http.Request) {
+	var err error
 	ctx := context.Background()
-	err := db.Ping(ctx)
+	conf, err := pgx.ParseConfig(*config.dbAddress)
+	db, err = pgx.ConnectConfig(ctx, conf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
+	}
+	defer db.Close(ctx)
+	err = db.Ping(ctx)
 	if err != nil {
 		http.Error(w, "unable to ping db", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+	return
 }
 
 const urlLen = 5
@@ -294,12 +302,6 @@ func main() {
 		config.fileStoragePath = &fileStoragePathEnv
 	}
 	var err error
-	ctx := context.Background()
-	db, err = pgx.Connect(ctx, *config.dbAddress)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
-	}
-	defer db.Close(ctx)
 	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	localMem = storage.NewMemoryStorage()
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
@@ -309,8 +311,8 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
-	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/ping", pingDB).Methods(http.MethodGet)
+	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", listURL).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(*config.serverAddress, gzipHandle(router)))
 }
