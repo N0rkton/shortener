@@ -2,8 +2,8 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
-	_ "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 	"io"
 	"log"
 	"net/http"
@@ -229,7 +229,8 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func pingDB(w http.ResponseWriter, r *http.Request) {
-	err := db.Ping()
+	ctx := context.Background()
+	err := db.Ping(ctx)
 	if err != nil {
 		http.Error(w, "unable to ping db", http.StatusInternalServerError)
 		return
@@ -272,7 +273,7 @@ func isValidURL(token string) bool {
 var secret []byte
 var localMem storage.Storage
 var fileStorage storage.Storage
-var db *sql.DB
+var db *pgx.Conn
 
 func main() {
 	flag.Parse()
@@ -293,11 +294,12 @@ func main() {
 		config.fileStoragePath = &fileStoragePathEnv
 	}
 	var err error
-	db, err = sql.Open("postgres", *config.dbAddress)
+	ctx := context.Background()
+	db, err = pgx.Connect(ctx, *config.dbAddress)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
 	}
-	defer db.Close()
+	defer db.Close(ctx)
 	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	localMem = storage.NewMemoryStorage()
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
