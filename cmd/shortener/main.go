@@ -2,8 +2,8 @@ package main
 
 import (
 	"compress/gzip"
-	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
@@ -13,14 +13,13 @@ import (
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 )
 
 type gzipWriter struct {
@@ -122,7 +121,6 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -168,7 +166,6 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(*config.baseURL + "/" + code))
 }
-
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
@@ -232,22 +229,13 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func pingDB(w http.ResponseWriter, r *http.Request) {
-	conn, err := pgx.Connect(context.Background(), *config.dbAddress)
+	err := db.Ping()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		//os.Exit(1)
-	}
-	defer conn.Close(context.Background())
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	if err = conn.Ping(ctx); err != nil {
 		http.Error(w, "unable to ping db", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
-
-var secret []byte
 
 const urlLen = 5
 const defaultBaseURL = "http://localhost:8080"
@@ -281,8 +269,10 @@ func isValidURL(token string) bool {
 	return err == nil && u.Host != ""
 }
 
+var secret []byte
 var localMem storage.Storage
 var fileStorage storage.Storage
+var db *sql.DB
 
 func main() {
 	flag.Parse()
@@ -303,6 +293,11 @@ func main() {
 		config.fileStoragePath = &fileStoragePathEnv
 	}
 	var err error
+	db, err = sql.Open("postgres", *config.dbAddress)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
+	}
+	defer db.Close()
 	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	localMem = storage.NewMemoryStorage()
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
@@ -313,7 +308,7 @@ func main() {
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
-	router.HandleFunc("/api/user/urls", listURL).Methods(http.MethodGet)
 	router.HandleFunc("/ping", pingDB).Methods(http.MethodGet)
+	router.HandleFunc("/api/user/urls", listURL).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(*config.serverAddress, gzipHandle(router)))
 }
