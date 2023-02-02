@@ -2,18 +2,15 @@ package main
 
 import (
 	"compress/gzip"
-	"context"
 	"crypto/rand"
 	"encoding/base32"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
 	"io"
 	"log"
 	"net/http"
@@ -110,7 +107,13 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-
+	if *config.dbAddress != "" {
+		ok = db.AddURL(value, code, body.URL)
+	}
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	var res response
@@ -162,6 +165,13 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
+	if *config.dbAddress != "" {
+		ok = db.AddURL(value, code, string(s))
+	}
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("content-type", "plain/text")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(*config.baseURL + "/" + code))
@@ -171,6 +181,14 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 	shortLink := vars["id"]
 	var link string
 	var ok error
+	if *config.dbAddress != "" {
+		link, ok = db.GetURL(shortLink)
+	}
+	if link != "" && ok == nil {
+		w.Header().Set("Location", link)
+		w.WriteHeader(http.StatusTemporaryRedirect)
+		return
+	}
 	if *config.fileStoragePath != "" {
 		link, ok = fileStorage.GetURL(shortLink)
 	}
@@ -196,7 +214,23 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
-	if fileStorage != nil {
+	if *config.dbAddress != "" {
+		shortAndLongURL, ok = fileStorage.GetURLByID(value)
+	}
+	if ok == nil {
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		for k, v := range shortAndLongURL {
+			idR = append(idR, idResponse{ShortURL: *config.baseURL + "/" + k, OriginalURL: v})
+		}
+		if err := json.NewEncoder(w).Encode(idR); err != nil {
+			log.Println("jsonIndexPage: encoding response:", err)
+			http.Error(w, "unable to encode response", http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+	if *config.fileStoragePath != "" {
 		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
@@ -229,21 +263,12 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func pingDB(w http.ResponseWriter, r *http.Request) {
-	var err error
-	ctx := context.Background()
-	conf, err := pgx.ParseConfig(*config.dbAddress)
-	db, err = pgx.ConnectConfig(ctx, conf)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to open database: %v\n", err)
-	}
-	defer db.Close(ctx)
-	err = db.Ping(ctx)
+	err := storage.Ping(*config.dbAddress)
 	if err != nil {
 		http.Error(w, "unable to ping db", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	return
 }
 
 const urlLen = 5
@@ -281,7 +306,7 @@ func isValidURL(token string) bool {
 var secret []byte
 var localMem storage.Storage
 var fileStorage storage.Storage
-var db *pgx.Conn
+var db storage.Storage
 
 func main() {
 	flag.Parse()
@@ -304,6 +329,7 @@ func main() {
 	var err error
 	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	localMem = storage.NewMemoryStorage()
+	db, _ = storage.NewDBStorage(*config.dbAddress)
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
 	if err != nil {
 		log.Fatal(err)

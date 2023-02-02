@@ -39,7 +39,6 @@ func (sm *MemoryStorage) GetURL(url string) (string, error) {
 func (sm *MemoryStorage) GetURLByID(id string) (map[string]string, error) {
 	text, ok := sm.localMem[id]
 	if ok {
-
 		return text, nil
 	}
 	return nil, errors.New("not found")
