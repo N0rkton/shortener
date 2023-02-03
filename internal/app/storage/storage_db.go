@@ -31,6 +31,9 @@ func Ping(path string) error {
 	return nil
 }
 func NewDBStorage(path string) (Storage, error) {
+	if path == "" {
+		return nil, errors.New("invalid db address")
+	}
 	ctx := context.Background()
 	conf, _ := pgx.ParseConfig(path)
 	db, err := pgx.ConnectConfig(ctx, conf)
@@ -55,7 +58,7 @@ func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 		return errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
-	dbs.db.Exec(ctx, "insert into links (id, link, short) values ($1, $2)", id, url, code)
+	dbs.db.Exec(ctx, "insert into links (id, link, short) values ($1, $2, $3)", id, url, code)
 	return nil
 }
 func (dbs *DBStorage) GetURL(url string) (string, error) {
