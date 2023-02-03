@@ -41,12 +41,16 @@ func NewDBStorage(path string) (Storage, error) {
 		return nil, errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
+	_, err = db.Exec(ctx, "CREATE DATABASE "+"shortener")
+	if err != nil {
+		return nil, errors.New("unable to create db")
+	}
 	query := `CREATE TABLE IF NOT EXISTS links(id text, link text,  
     short text primary key)`
 	_, err = db.Exec(ctx, query)
 	if err != nil {
 		log.Printf("Error %s when creating product table", err)
-		return nil, errors.New("unable to create")
+		return nil, errors.New("unable to create table")
 	}
 	return &DBStorage{db: db, path: path}, nil
 }
