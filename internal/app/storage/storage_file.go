@@ -25,10 +25,7 @@ func NewFileStorage(path string) (Storage, error) {
 	for scanner.Scan() {
 		err = json.Unmarshal(scanner.Bytes(), &text)
 		if err != nil {
-			return &FileStorage{
-				memStorage: memDB,
-				f:          file,
-			}, fmt.Errorf("unable to unmarshall: %w", err)
+			return nil, fmt.Errorf("unable to unmarshall: %w", err)
 		}
 		memDB.AddURL(text[0], text[1], text[2])
 	}

@@ -18,7 +18,7 @@ type DBStorage struct {
 
 func Ping(path string) error {
 	ctx := context.Background()
-	conf, _ := pgx.ParseConfig(path)
+	conf, err := pgx.ParseConfig(path)
 	db, err := pgx.ConnectConfig(ctx, conf)
 	if err != nil {
 		return errors.New("unable to connect")
@@ -35,13 +35,14 @@ func NewDBStorage(path string) (Storage, error) {
 		return nil, errors.New("invalid db address")
 	}
 	ctx := context.Background()
-	conf, _ := pgx.ParseConfig(path)
+
+	conf, err := pgx.ParseConfig(path)
 	db, err := pgx.ConnectConfig(ctx, conf)
 	if err != nil {
 		return nil, errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
-	_, err = db.Exec(ctx, "CREATE DATABASE shortener;")
+	//_, err = db.Exec(ctx, "CREATE DATABASE shortener;")
 	if err != nil {
 		return nil, errors.New("unable to create db")
 	}
@@ -56,7 +57,7 @@ func NewDBStorage(path string) (Storage, error) {
 }
 func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 	ctx := context.Background()
-	conf, _ := pgx.ParseConfig(dbs.path)
+	conf, err := pgx.ParseConfig(dbs.path)
 	db, err := pgx.ConnectConfig(ctx, conf)
 	if err != nil {
 		return errors.New("unable to connect")
@@ -67,7 +68,7 @@ func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 }
 func (dbs *DBStorage) GetURL(url string) (string, error) {
 	ctx := context.Background()
-	conf, _ := pgx.ParseConfig(dbs.path)
+	conf, err := pgx.ParseConfig(dbs.path)
 	db, err := pgx.ConnectConfig(ctx, conf)
 	if err != nil {
 		return "", errors.New("unable to connect")
@@ -81,7 +82,7 @@ func (dbs *DBStorage) GetURL(url string) (string, error) {
 
 func (dbs *DBStorage) GetURLByID(id string) (map[string]string, error) {
 	ctx := context.Background()
-	conf, _ := pgx.ParseConfig(dbs.path)
+	conf, err := pgx.ParseConfig(dbs.path)
 	db, err := pgx.ConnectConfig(ctx, conf)
 	if err != nil {
 		return nil, errors.New("unable to connect")
