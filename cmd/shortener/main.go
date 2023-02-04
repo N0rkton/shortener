@@ -100,7 +100,7 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if *config.fileStoragePath != "" && fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		ok = fileStorage.AddURL(value, code, body.URL)
 	}
 	if ok != nil {
@@ -153,41 +153,35 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := generateRandomString(urlLen)
-	var ok error
-	if *config.dbAddress != "" && db != nil {
-		ok = db.AddURL(value, code, string(s))
-	}
-	if ok == nil {
-		w.Header().Set("content-type", "plain/text")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(*config.baseURL + "/" + code))
+	ok := localMem.AddURL(value, code, string(s))
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if *config.fileStoragePath != "" && fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		ok = fileStorage.AddURL(value, code, string(s))
 	}
-	if ok == nil {
-		w.Header().Set("content-type", "plain/text")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(*config.baseURL + "/" + code))
-		return
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	ok = localMem.AddURL(value, code, string(s))
-	if ok == nil {
-		w.Header().Set("content-type", "plain/text")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(*config.baseURL + "/" + code))
+	if *config.dbAddress != "" {
+		ok = db.AddURL(value, code, string(s))
+	}
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Error(w, ok.Error(), http.StatusBadRequest)
+	w.Header().Set("content-type", "plain/text")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(*config.baseURL + "/" + code))
 }
 func redirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
 	var link string
 	var ok error
-	if *config.dbAddress != "" && db != nil {
+	if *config.dbAddress != "" {
 		link, ok = db.GetURL(shortLink)
 	}
 	if link != "" && ok == nil {
@@ -195,7 +189,7 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
-	if *config.fileStoragePath != "" && fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		link, ok = fileStorage.GetURL(shortLink)
 	}
 	if link != "" && ok == nil {
@@ -204,12 +198,12 @@ func redirectTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	link, ok = localMem.GetURL(shortLink)
-	if ok == nil {
-		w.Header().Set("Location", link)
-		w.WriteHeader(http.StatusTemporaryRedirect)
+	if ok != nil {
+		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Error(w, ok.Error(), http.StatusBadRequest)
+	w.Header().Set("Location", link)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 func listURL(w http.ResponseWriter, r *http.Request) {
 	var idR []idResponse
@@ -220,7 +214,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
-	if *config.dbAddress != "" && db != nil {
+	if *config.dbAddress != "" {
 		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
@@ -236,7 +230,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if *config.fileStoragePath != "" && fileStorage != nil {
+	if *config.fileStoragePath != "" {
 		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
@@ -317,7 +311,6 @@ var db storage.Storage
 func main() {
 	flag.Parse()
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
-	//dbAddressEnv = "jdbc:postgresql://localhost:5432/shvm"
 	if dbAddressEnv != "" {
 		config.dbAddress = &dbAddressEnv
 	}
@@ -336,10 +329,7 @@ func main() {
 	var err error
 	fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
 	localMem = storage.NewMemoryStorage()
-	db, err = storage.NewDBStorage(*config.dbAddress)
-	if err != nil {
-		log.Fatal(err)
-	}
+	db, _ = storage.NewDBStorage(*config.dbAddress)
 	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
 	if err != nil {
 		log.Fatal(err)

@@ -42,10 +42,6 @@ func NewDBStorage(path string) (Storage, error) {
 		return nil, errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
-	//_, err = db.Exec(ctx, "CREATE DATABASE shortener;")
-	if err != nil {
-		return nil, errors.New("unable to create db")
-	}
 	query := `CREATE TABLE IF NOT EXISTS links(id text, link text,  
     short text);`
 	_, err = db.Exec(ctx, query)
