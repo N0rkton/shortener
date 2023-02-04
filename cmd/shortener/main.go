@@ -214,7 +214,7 @@ func listURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
-	if *config.dbAddress != "" {
+	if *config.dbAddress != "" && fileStorage != nil {
 		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
@@ -311,6 +311,8 @@ var db storage.Storage
 func main() {
 	flag.Parse()
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
+	//dbAddressEnv = "postgresql://localhost:5432/shvm"
+
 	if dbAddressEnv != "" {
 		config.dbAddress = &dbAddressEnv
 	}

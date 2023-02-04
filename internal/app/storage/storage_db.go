@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 )
 
@@ -12,13 +13,13 @@ type links struct {
 	short string
 }
 type DBStorage struct {
-	db   *pgx.Conn
+	db   *pgxpool.Pool
 	path string
 }
 
 func Ping(path string) error {
 	ctx := context.Background()
-	conf, err := pgx.ParseConfig(path)
+	conf, _ := pgx.ParseConfig(path)
 	db, err := pgx.ConnectConfig(ctx, conf)
 	if err != nil {
 		return errors.New("unable to connect")
@@ -36,12 +37,12 @@ func NewDBStorage(path string) (Storage, error) {
 	}
 	ctx := context.Background()
 
-	conf, err := pgx.ParseConfig(path)
-	db, err := pgx.ConnectConfig(ctx, conf)
+	//conf, err := pgx.ParseConfig(path)
+	db, err := pgxpool.New(ctx, path)
 	if err != nil {
 		return nil, errors.New("unable to connect")
 	}
-	defer db.Close(ctx)
+	defer db.Close()
 	query := `CREATE TABLE IF NOT EXISTS links(id text, link text,  
     short text);`
 	_, err = db.Exec(ctx, query)
@@ -53,23 +54,23 @@ func NewDBStorage(path string) (Storage, error) {
 }
 func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 	ctx := context.Background()
-	conf, err := pgx.ParseConfig(dbs.path)
-	db, err := pgx.ConnectConfig(ctx, conf)
+	var err error
+	dbs.db, err = pgxpool.New(ctx, dbs.path)
 	if err != nil {
 		return errors.New("unable to connect")
 	}
-	defer db.Close(ctx)
-	dbs.db.Exec(ctx, "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
+	defer dbs.db.Close()
+	_, err = dbs.db.Exec(context.Background(), "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
 	return nil
 }
 func (dbs *DBStorage) GetURL(url string) (string, error) {
 	ctx := context.Background()
-	conf, err := pgx.ParseConfig(dbs.path)
-	db, err := pgx.ConnectConfig(ctx, conf)
+	var err error
+	dbs.db, err = pgxpool.New(ctx, dbs.path)
 	if err != nil {
 		return "", errors.New("unable to connect")
 	}
-	defer db.Close(ctx)
+	defer dbs.db.Close()
 	rows := dbs.db.QueryRow(ctx, "select link from links where short=$1 limit 1;", url)
 	var link string
 	rows.Scan(&link)
@@ -78,12 +79,12 @@ func (dbs *DBStorage) GetURL(url string) (string, error) {
 
 func (dbs *DBStorage) GetURLByID(id string) (map[string]string, error) {
 	ctx := context.Background()
-	conf, err := pgx.ParseConfig(dbs.path)
-	db, err := pgx.ConnectConfig(ctx, conf)
+	var err error
+	dbs.db, err = pgxpool.New(ctx, dbs.path)
 	if err != nil {
 		return nil, errors.New("unable to connect")
 	}
-	defer db.Close(ctx)
+	defer dbs.db.Close()
 	resp := make(map[string]string)
 	rows, err := dbs.db.Query(ctx, "SELECT link, short from links where id=$1", id)
 	if err != nil {
