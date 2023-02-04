@@ -41,12 +41,12 @@ func NewDBStorage(path string) (Storage, error) {
 		return nil, errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
-	_, err = db.Exec(ctx, "CREATE DATABASE "+"shortener")
+	_, err = db.Exec(ctx, "CREATE DATABASE shortener;")
 	if err != nil {
 		return nil, errors.New("unable to create db")
 	}
 	query := `CREATE TABLE IF NOT EXISTS links(id text, link text,  
-    short text primary key)`
+    short text);`
 	_, err = db.Exec(ctx, query)
 	if err != nil {
 		log.Printf("Error %s when creating product table", err)
@@ -62,7 +62,7 @@ func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 		return errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
-	dbs.db.Exec(ctx, "insert into links (id, link, short) values ($1, $2, $3)", id, url, code)
+	dbs.db.Exec(ctx, "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
 	return nil
 }
 func (dbs *DBStorage) GetURL(url string) (string, error) {
@@ -73,7 +73,7 @@ func (dbs *DBStorage) GetURL(url string) (string, error) {
 		return "", errors.New("unable to connect")
 	}
 	defer db.Close(ctx)
-	rows := dbs.db.QueryRow(ctx, "select link from links where short=$1 limit 1", url)
+	rows := dbs.db.QueryRow(ctx, "select link from links where short=$1 limit 1;", url)
 	var link string
 	rows.Scan(&link)
 	return link, nil
