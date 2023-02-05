@@ -56,6 +56,14 @@ type idResponse struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+type readBatch struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+type respBatch struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
 
 func gzipDecode(r *http.Request) io.ReadCloser {
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
@@ -270,6 +278,54 @@ func pingDB(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+func batch(w http.ResponseWriter, r *http.Request) {
+	var req []readBatch
+	var resp []respBatch
+	text, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(text, &req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for k := range req {
+		if !isValidURL(req[k].OriginalURL) {
+			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			return
+		}
+		code := generateRandomString(urlLen)
+		resp = append(resp, respBatch{req[k].CorrelationID, *config.baseURL + "/" + code})
+		ok := localMem.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
+		if ok != nil {
+			http.Error(w, ok.Error(), http.StatusBadRequest)
+			return
+		}
+		if *config.fileStoragePath != "" {
+			ok = fileStorage.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
+		}
+		if ok != nil {
+			http.Error(w, ok.Error(), http.StatusBadRequest)
+			return
+		}
+		if *config.dbAddress != "" {
+			ok = db.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
+		}
+		if ok != nil {
+			http.Error(w, ok.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Println("jsonIndexPage: encoding response:", err)
+		http.Error(w, "unable to encode response", http.StatusInternalServerError)
+		return
+	}
+}
 
 const urlLen = 5
 const defaultBaseURL = "http://localhost:8080"
@@ -339,6 +395,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", jsonIndexPage).Methods(http.MethodPost)
+	router.HandleFunc("/api/shorten/batch", batch).Methods(http.MethodPost)
 	router.HandleFunc("/ping", pingDB).Methods(http.MethodGet)
 	router.HandleFunc("/{id}", redirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", listURL).Methods(http.MethodGet)
