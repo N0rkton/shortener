@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
@@ -37,8 +36,6 @@ func NewDBStorage(path string) (Storage, error) {
 		return nil, errors.New("invalid db address")
 	}
 	ctx := context.Background()
-
-	//conf, err := pgx.ParseConfig(path)
 	db, err := pgxpool.New(ctx, path)
 	if err != nil {
 		return nil, errors.New("unable to connect")
@@ -61,9 +58,8 @@ func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 		return errors.New("unable to connect")
 	}
 	defer dbs.db.Close()
-	//ON CONFLICT (link) DO NOTHING
+	//ON CONFLICT (link) DO NOTHING я не понял как это должно помочь
 	_, err = dbs.db.Exec(context.Background(), "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
-	fmt.Println(err)
 	return err
 }
 func (dbs *DBStorage) GetURL(url string) (string, error) {
@@ -106,7 +102,6 @@ func (dbs *DBStorage) GetURLByID(id string) (map[string]string, error) {
 }
 func GetShortURLByOrigin(path string, url string) (string, error) {
 	ctx := context.Background()
-
 	db, err := pgxpool.New(ctx, path)
 	if err != nil {
 		return "", errors.New("unable to connect")

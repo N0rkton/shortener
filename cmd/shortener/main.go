@@ -12,6 +12,7 @@ import (
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"io"
 	"log"
@@ -120,13 +121,13 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		ok = db.AddURL(value, code, body.URL)
 	}
 	if ok != nil {
-		if ok.(*pgconn.PgError).Code == "23505" {
+		if ok.(*pgconn.PgError).Code == pgerrcode.UniqueViolation {
 			fmt.Println("ddd")
 			link, ok2 := storage.GetShortURLByOrigin(*config.dbAddress, body.URL)
 			fmt.Println(link)
 			if link != "" && ok2 == nil {
 				fmt.Println("da")
-				w.Header().Set("content-type", "plain/text")
+				w.Header().Set("content-type", "application/json")
 				w.WriteHeader(http.StatusConflict)
 				var res response
 				res.Result = *config.baseURL + "/" + link
@@ -197,7 +198,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ok != nil {
-		if ok.(*pgconn.PgError).Code == "23505" {
+		if ok.(*pgconn.PgError).Code == pgerrcode.UniqueViolation {
 			fmt.Println("ddd")
 			link, ok2 := storage.GetShortURLByOrigin(*config.dbAddress, string(s))
 			fmt.Println(link)
@@ -399,7 +400,7 @@ var db storage.Storage
 func main() {
 	flag.Parse()
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
-	dbAddressEnv = "postgresql://localhost:5432/shvm"
+	//dbAddressEnv = "postgresql://localhost:5432/shvm"
 
 	if dbAddressEnv != "" {
 		config.dbAddress = &dbAddressEnv
