@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgconn"
 	"io"
 	"log"
 	"net/http"
@@ -74,7 +76,6 @@ func gzipDecode(r *http.Request) io.ReadCloser {
 	return r.Body
 }
 func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
-	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
 		value = generateRandomString(3)
@@ -119,6 +120,24 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		ok = db.AddURL(value, code, body.URL)
 	}
 	if ok != nil {
+		if ok.(*pgconn.PgError).Code == "23505" {
+			fmt.Println("ddd")
+			link, ok2 := storage.GetShortURLByOrigin(*config.dbAddress, body.URL)
+			fmt.Println(link)
+			if link != "" && ok2 == nil {
+				fmt.Println("da")
+				w.Header().Set("content-type", "plain/text")
+				w.WriteHeader(http.StatusConflict)
+				var res response
+				res.Result = *config.baseURL + "/" + link
+				if err := json.NewEncoder(w).Encode(res); err != nil {
+					log.Println("jsonIndexPage: encoding response:", err)
+					http.Error(w, "unable to encode response", http.StatusInternalServerError)
+					return
+				}
+				return
+			}
+		}
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
@@ -176,7 +195,20 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 	if *config.dbAddress != "" {
 		ok = db.AddURL(value, code, string(s))
 	}
+
 	if ok != nil {
+		if ok.(*pgconn.PgError).Code == "23505" {
+			fmt.Println("ddd")
+			link, ok2 := storage.GetShortURLByOrigin(*config.dbAddress, string(s))
+			fmt.Println(link)
+			if link != "" && ok2 == nil {
+				fmt.Println("da")
+				w.Header().Set("content-type", "plain/text")
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(*config.baseURL + "/" + link))
+				return
+			}
+		}
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
@@ -367,7 +399,7 @@ var db storage.Storage
 func main() {
 	flag.Parse()
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
-	//dbAddressEnv = "postgresql://localhost:5432/shvm"
+	dbAddressEnv = "postgresql://localhost:5432/shvm"
 
 	if dbAddressEnv != "" {
 		config.dbAddress = &dbAddressEnv

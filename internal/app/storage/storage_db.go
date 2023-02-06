@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
@@ -43,7 +44,7 @@ func NewDBStorage(path string) (Storage, error) {
 		return nil, errors.New("unable to connect")
 	}
 	defer db.Close()
-	query := `CREATE TABLE IF NOT EXISTS links(id text, link text,  
+	query := `CREATE TABLE IF NOT EXISTS links(id text, link text UNIQUE,  
     short text);`
 	_, err = db.Exec(ctx, query)
 	if err != nil {
@@ -60,8 +61,10 @@ func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 		return errors.New("unable to connect")
 	}
 	defer dbs.db.Close()
-	dbs.db.Exec(context.Background(), "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
-	return nil
+	//ON CONFLICT (link) DO NOTHING
+	_, err = dbs.db.Exec(context.Background(), "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
+	fmt.Println(err)
+	return err
 }
 func (dbs *DBStorage) GetURL(url string) (string, error) {
 	ctx := context.Background()
@@ -100,4 +103,17 @@ func (dbs *DBStorage) GetURLByID(id string) (map[string]string, error) {
 		resp[v.short] = v.link
 	}
 	return resp, nil
+}
+func GetShortURLByOrigin(path string, url string) (string, error) {
+	ctx := context.Background()
+
+	db, err := pgxpool.New(ctx, path)
+	if err != nil {
+		return "", errors.New("unable to connect")
+	}
+	defer db.Close()
+	rows := db.QueryRow(ctx, "select short from links where link=$1 limit 1;", url)
+	var link string
+	rows.Scan(&link)
+	return link, nil
 }
