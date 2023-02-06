@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
@@ -122,11 +121,8 @@ func jsonIndexPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if ok != nil {
 		if ok.(*pgconn.PgError).Code == pgerrcode.UniqueViolation {
-			fmt.Println("ddd")
 			link, ok2 := storage.GetShortURLByOrigin(*config.dbAddress, body.URL)
-			fmt.Println(link)
 			if link != "" && ok2 == nil {
-				fmt.Println("da")
 				w.Header().Set("content-type", "application/json")
 				w.WriteHeader(http.StatusConflict)
 				var res response
@@ -199,11 +195,8 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 
 	if ok != nil {
 		if ok.(*pgconn.PgError).Code == pgerrcode.UniqueViolation {
-			fmt.Println("ddd")
 			link, ok2 := storage.GetShortURLByOrigin(*config.dbAddress, string(s))
-			fmt.Println(link)
 			if link != "" && ok2 == nil {
-				fmt.Println("da")
 				w.Header().Set("content-type", "plain/text")
 				w.WriteHeader(http.StatusConflict)
 				w.Write([]byte(*config.baseURL + "/" + link))
