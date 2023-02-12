@@ -52,7 +52,6 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	}
 	text = append(text, '\n')
 	_, err = fs.f.Write(text)
-	fmt.Println(err)
 	return nil
 }
 

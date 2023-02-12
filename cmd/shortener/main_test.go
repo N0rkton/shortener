@@ -39,12 +39,12 @@ func Test_indexPage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			Secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
 			if err != nil {
 				log.Fatal(err)
 			}
-			fileStorage, _ = storage.NewFileStorage(*config.fileStoragePath)
-			localMem = storage.NewStorageMock()
+			FileStorage, _ = storage.NewFileStorage(*Config.fileStoragePath)
+			LocalMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
@@ -83,11 +83,11 @@ func Test_jsonIndexPage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			Secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
 			if err != nil {
 				log.Fatal(err)
 			}
-			localMem = storage.NewStorageMock()
+			LocalMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
 			request.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
@@ -123,7 +123,7 @@ func Test_redirectTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			localMem = storage.NewStorageMock()
+			LocalMem = storage.NewStorageMock()
 			r := mux.NewRouter()
 			r.HandleFunc("/{id}", redirectTo)
 			w2 := httptest.NewRecorder()
