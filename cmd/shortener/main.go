@@ -13,7 +13,7 @@ func main() {
 	handlers.Init()
 	router := mux.NewRouter()
 	router.HandleFunc("/", handlers.IndexPage).Methods(http.MethodPost)
-	router.HandleFunc("/api/shorten", handlers.JsonIndexPage).Methods(http.MethodPost)
+	router.HandleFunc("/api/shorten", handlers.JSONIndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten/batch", handlers.Batch).Methods(http.MethodPost)
 	router.HandleFunc("/ping", handlers.PingDB).Methods(http.MethodGet)
 	router.HandleFunc("/{id}", handlers.RedirectTo).Methods(http.MethodGet)

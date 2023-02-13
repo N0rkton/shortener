@@ -51,7 +51,7 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 		return errors.New("json error")
 	}
 	text = append(text, '\n')
-	_, err = fs.f.Write(text)
+	fs.f.Write(text)
 	return nil
 }
 

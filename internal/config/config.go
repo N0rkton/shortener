@@ -9,7 +9,7 @@ type Cfg struct {
 	ServerAddress   *string
 	BaseURL         *string
 	FileStoragePath *string
-	DbAddress       *string
+	DBAddress       *string
 }
 
 var config Cfg
@@ -20,14 +20,14 @@ func init() {
 	config.ServerAddress = flag.String("a", "localhost:8080", "server address")
 	config.BaseURL = flag.String("b", defaultBaseURL, "base URL")
 	config.FileStoragePath = flag.String("f", "", "file path")
-	config.DbAddress = flag.String("d", "", "data base connection address")
+	config.DBAddress = flag.String("d", "", "data base connection address")
 }
 func NewConfig() Cfg {
 	flag.Parse()
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
 	//dbAddressEnv = "postgresql://localhost:5432/shvm"
 	if dbAddressEnv != "" {
-		config.DbAddress = &dbAddressEnv
+		config.DBAddress = &dbAddressEnv
 	}
 	serverAddressEnv := os.Getenv("SERVER_ADDRESS")
 	if serverAddressEnv != "" {

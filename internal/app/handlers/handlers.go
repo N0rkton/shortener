@@ -35,7 +35,7 @@ func Init() {
 		log.Println(err)
 	}
 	localMem = storage.NewMemoryStorage()
-	db, err = storage.NewDBStorage(*config.DbAddress)
+	db, err = storage.NewDBStorage(*config.DBAddress)
 	if err != nil {
 		log.Println(err)
 	}
@@ -99,7 +99,7 @@ func gzipDecode(r *http.Request) io.ReadCloser {
 	}
 	return r.Body
 }
-func JsonIndexPage(w http.ResponseWriter, r *http.Request) {
+func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
 		value = generateRandomString(3)
@@ -140,14 +140,14 @@ func JsonIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if *config.DbAddress != "" {
+	if *config.DBAddress != "" {
 		ok = db.AddURL(value, code, body.URL)
 	}
 	if ok != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(ok, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				link, ok2 := storage.GetShortURLByOrigin(*config.DbAddress, body.URL)
+				link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, body.URL)
 				if link != "" && ok2 == nil {
 					w.Header().Set("content-type", "application/json")
 					w.WriteHeader(http.StatusConflict)
@@ -216,7 +216,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if *config.DbAddress != "" {
+	if *config.DBAddress != "" {
 		ok = db.AddURL(value, code, string(s))
 	}
 
@@ -224,7 +224,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 		var pgErr *pgconn.PgError
 		if errors.As(ok, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				link, ok2 := storage.GetShortURLByOrigin(*config.DbAddress, string(s))
+				link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, string(s))
 				if link != "" && ok2 == nil {
 					w.Header().Set("content-type", "plain/text")
 					w.WriteHeader(http.StatusConflict)
@@ -245,7 +245,7 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	shortLink := vars["id"]
 	var link string
 	var ok error
-	if *config.DbAddress != "" {
+	if *config.DBAddress != "" {
 		link, ok = db.GetURL(shortLink)
 	}
 	if link != "" && ok == nil {
@@ -278,7 +278,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
-	if *config.DbAddress != "" && fileStorage != nil {
+	if *config.DBAddress != "" && fileStorage != nil {
 		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
@@ -327,7 +327,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func PingDB(w http.ResponseWriter, r *http.Request) {
-	err := storage.Ping(*config.DbAddress)
+	err := storage.Ping(*config.DBAddress)
 	if err != nil {
 		http.Error(w, "unable to ping db", http.StatusInternalServerError)
 		return
@@ -366,7 +366,7 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ok.Error(), http.StatusBadRequest)
 			return
 		}
-		if *config.DbAddress != "" {
+		if *config.DBAddress != "" {
 			ok = db.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
 		}
 		if ok != nil {
