@@ -2,8 +2,7 @@ package main
 
 import (
 	"bytes"
-	"encoding/hex"
-	"github.com/N0rkton/shortener/internal/app/storage"
+	"github.com/N0rkton/shortener/internal/app/handlers"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -39,16 +38,14 @@ func Test_indexPage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			Secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			handlers.Init()
 			if err != nil {
 				log.Fatal(err)
 			}
-			FileStorage, _ = storage.NewFileStorage(*Config.fileStoragePath)
-			LocalMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(indexPage)
+			h := http.HandlerFunc(handlers.IndexPage)
 			h(w, request)
 			result := w.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)
@@ -82,16 +79,12 @@ func Test_jsonIndexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
-			Secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
-			if err != nil {
-				log.Fatal(err)
-			}
-			LocalMem = storage.NewStorageMock()
+
+			handlers.Init()
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
 			request.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(jsonIndexPage)
+			h := http.HandlerFunc(handlers.JsonIndexPage)
 			h(w, request)
 			result := w.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)
@@ -123,9 +116,9 @@ func Test_redirectTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			LocalMem = storage.NewStorageMock()
+			handlers.Init()
 			r := mux.NewRouter()
-			r.HandleFunc("/{id}", redirectTo)
+			r.HandleFunc("/{id}", handlers.RedirectTo)
 			w2 := httptest.NewRecorder()
 			r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, tt.request, nil))
 			result := w2.Result()
