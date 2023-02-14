@@ -156,6 +156,7 @@ func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "unable to encode response", http.StatusInternalServerError)
 				return
 			}
+			return
 		}
 	}
 	if ok != nil {
