@@ -7,10 +7,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	conf "github.com/N0rkton/shortener/internal/app/config"
 
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
-	config2 "github.com/N0rkton/shortener/internal/config"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -25,10 +25,10 @@ var secret []byte
 var localMem storage.Storage
 var fileStorage storage.Storage
 var db storage.Storage
-var config config2.Cfg
+var config conf.Cfg
 
 func Init() {
-	config = config2.NewConfig()
+	config = conf.NewConfig()
 	var err error
 	fileStorage, err = storage.NewFileStorage(*config.FileStoragePath)
 	if err != nil {
@@ -143,25 +143,22 @@ func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 	if *config.DBAddress != "" {
 		ok = db.AddURL(value, code, body.URL)
 	}
-	if ok != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(ok, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, body.URL)
-				if link != "" && ok2 == nil {
-					w.Header().Set("content-type", "application/json")
-					w.WriteHeader(http.StatusConflict)
-					var res response
-					res.Result = *config.BaseURL + "/" + link
-					if err := json.NewEncoder(w).Encode(res); err != nil {
-						log.Println("jsonIndexPage: encoding response:", err)
-						http.Error(w, "unable to encode response", http.StatusInternalServerError)
-						return
-					}
-					return
-				}
+	var pgErr *pgconn.PgError
+	if errors.As(ok, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, body.URL)
+		if ok2 == nil {
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			var res response
+			res.Result = *config.BaseURL + "/" + link
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				log.Println("jsonIndexPage: encoding response:", err)
+				http.Error(w, "unable to encode response", http.StatusInternalServerError)
+				return
 			}
 		}
+	}
+	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
@@ -219,20 +216,17 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	if *config.DBAddress != "" {
 		ok = db.AddURL(value, code, string(s))
 	}
-
-	if ok != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(ok, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, string(s))
-				if link != "" && ok2 == nil {
-					w.Header().Set("content-type", "plain/text")
-					w.WriteHeader(http.StatusConflict)
-					w.Write([]byte(*config.BaseURL + "/" + link))
-					return
-				}
-			}
+	var pgErr *pgconn.PgError
+	if errors.As(ok, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, string(s))
+		if link != "" && ok2 == nil {
+			w.Header().Set("content-type", "plain/text")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(*config.BaseURL + "/" + link))
+			return
 		}
+	}
+	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/handlers"
-	"github.com/N0rkton/shortener/internal/config"
 	"github.com/gorilla/mux"
 
 	"log"

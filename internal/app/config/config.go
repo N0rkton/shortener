@@ -6,7 +6,7 @@ import (
 )
 
 type Cfg struct {
-	ServerAddress   *string
+	ServerAddress   string
 	BaseURL         *string
 	FileStoragePath *string
 	DBAddress       *string
@@ -17,7 +17,7 @@ var config Cfg
 const defaultBaseURL = "http://localhost:8080"
 
 func init() {
-	config.ServerAddress = flag.String("a", "localhost:8080", "server address")
+	config.ServerAddress = *flag.String("a", "localhost:8080", "server address")
 	config.BaseURL = flag.String("b", defaultBaseURL, "base URL")
 	config.FileStoragePath = flag.String("f", "", "file path")
 	config.DBAddress = flag.String("d", "", "data base connection address")
@@ -31,7 +31,7 @@ func NewConfig() Cfg {
 	}
 	serverAddressEnv := os.Getenv("SERVER_ADDRESS")
 	if serverAddressEnv != "" {
-		config.ServerAddress = &serverAddressEnv
+		config.ServerAddress = serverAddressEnv
 	}
 	baseURLEnv := os.Getenv("BASE_URL")
 	if baseURLEnv != "" {
@@ -44,5 +44,5 @@ func NewConfig() Cfg {
 	return config
 }
 func GetServerAddress() string {
-	return *config.ServerAddress
+	return config.ServerAddress
 }

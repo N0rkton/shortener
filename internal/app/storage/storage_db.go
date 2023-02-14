@@ -58,7 +58,6 @@ func (dbs *DBStorage) AddURL(id string, code string, url string) error {
 		return errors.New("unable to connect")
 	}
 	defer dbs.db.Close()
-	//ON CONFLICT (link) DO NOTHING я не понял как это должно помочь
 	_, err = dbs.db.Exec(context.Background(), "insert into links (id, link, short) values ($1, $2, $3);", id, url, code)
 	return err
 }
@@ -109,6 +108,9 @@ func GetShortURLByOrigin(path string, url string) (string, error) {
 	defer db.Close()
 	rows := db.QueryRow(ctx, "select short from links where link=$1 limit 1;", url)
 	var link string
-	rows.Scan(&link)
+	err = rows.Scan(&link)
+	if err != nil {
+		return "", errors.New("scan error")
+	}
 	return link, nil
 }
