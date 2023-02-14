@@ -1,10 +1,12 @@
-package main
+package handlers
 
 import (
 	"bytes"
+	"encoding/hex"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,14 +17,12 @@ func Test_indexPage(t *testing.T) {
 	type want struct {
 		code int
 	}
-
 	tests := []struct {
 		name    string
 		want    want
 		request string
 		body    string
 	}{
-
 		{name: "Positive",
 			want:    want{code: 201},
 			request: "http://localhost:8080/",
@@ -36,12 +36,18 @@ func Test_indexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fileStorage = storage.NewFileStorage("")
-			db = storage.NewStorageMock()
+			var err error
+			secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			if err != nil {
+				log.Fatal(err)
+			}
+			Init()
+			fileStorage, _ = storage.NewFileStorage(*config.FileStoragePath)
+			localMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.body))
 			request.Header.Set("Content-Type", "text/plain; charset=utf-8")
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(indexPage)
+			h := http.HandlerFunc(IndexPage)
 			h(w, request)
 			result := w.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)
@@ -75,11 +81,17 @@ func Test_jsonIndexPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db = storage.NewStorageMock()
+			Init()
+			var err error
+			secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+			if err != nil {
+				log.Fatal(err)
+			}
+			localMem = storage.NewStorageMock()
 			request := httptest.NewRequest(http.MethodPost, tt.request, bytes.NewReader(tt.body))
 			request.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(jsonIndexPage)
+			h := http.HandlerFunc(JSONIndexPage)
 			h(w, request)
 			result := w.Result()
 			assert.Equal(t, tt.want.code, result.StatusCode)
@@ -111,9 +123,10 @@ func Test_redirectTo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db = storage.NewStorageMock()
+			Init()
+			localMem = storage.NewStorageMock()
 			r := mux.NewRouter()
-			r.HandleFunc("/{id}", redirectTo)
+			r.HandleFunc("/{id}", RedirectTo)
 			w2 := httptest.NewRecorder()
 			r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, tt.request, nil))
 			result := w2.Result()
