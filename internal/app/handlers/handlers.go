@@ -411,8 +411,9 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	log.Println(text)
 	w.WriteHeader(http.StatusAccepted)
 	wg := &sync.WaitGroup{}
-	for _, v := range text {
+	for i := 0; i < len(text); i++ {
 		wg.Add(1)
+		v := text[i]
 		go func() {
 			defer wg.Done()
 			storage.Del(*config.DBAddress, v, value)

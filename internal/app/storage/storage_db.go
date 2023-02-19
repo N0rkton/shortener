@@ -71,12 +71,12 @@ func (dbs *DBStorage) GetURL(url string) (string, error) {
 	}
 	defer dbs.db.Close()
 	rows := dbs.db.QueryRow(ctx, "select link, deleted from links where short=$1  limit 1;", url)
+	var v links
+	err = rows.Scan(&v.link, &v.deleted)
 	if err != nil {
 		return "", errors.New("not found")
 	}
-	var v links
-	err = rows.Scan(&v.link, &v.deleted)
-	if v.deleted == true {
+	if v.deleted {
 		return "", errors.New("gone")
 	}
 	return v.link, nil
