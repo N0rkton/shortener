@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	conf "github.com/N0rkton/shortener/internal/app/config"
+	"sync"
 
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
@@ -243,6 +244,12 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	if *config.DBAddress != "" {
 		link, ok = db.GetURL(shortLink)
 	}
+	if ok != nil {
+		if ok.Error() == "gone" {
+			http.Error(w, ok.Error(), http.StatusGone)
+			return
+		}
+	}
 	if link != "" && ok == nil {
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -376,6 +383,42 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unable to encode response", http.StatusInternalServerError)
 		return
 	}
+}
+func DeleteURL(w http.ResponseWriter, r *http.Request) {
+	var value string
+	value, err := cookies.ReadEncrypted(r, "UserId", secret)
+	if err != nil {
+		value = generateRandomString(3)
+		cookie := http.Cookie{
+			Name:     "UserId",
+			Value:    value,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+		}
+		err = cookies.WriteEncrypted(w, cookie, secret)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	var text []string
+	err = json.NewDecoder(r.Body).Decode(&text)
+	if err != nil {
+		http.Error(w, "unable to decode body", http.StatusBadRequest)
+	}
+	log.Println(text)
+	w.WriteHeader(http.StatusAccepted)
+	wg := &sync.WaitGroup{}
+	for _, v := range text {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			storage.Del(*config.DBAddress, v, value)
+		}()
+	}
+	wg.Wait()
 }
 
 const urlLen = 5

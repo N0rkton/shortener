@@ -9,8 +9,9 @@ import (
 )
 
 type links struct {
-	link  string
-	short string
+	link    string
+	short   string
+	deleted bool
 }
 type DBStorage struct {
 	db   *pgxpool.Pool
@@ -42,7 +43,7 @@ func NewDBStorage(path string) (Storage, error) {
 	}
 	defer db.Close()
 	query := `CREATE TABLE IF NOT EXISTS links(id text, link text UNIQUE,  
-    short text);`
+    short text, deleted bool DEFAULT false );`
 	_, err = db.Exec(ctx, query)
 	if err != nil {
 		log.Printf("Error %s when creating product table", err)
@@ -69,10 +70,17 @@ func (dbs *DBStorage) GetURL(url string) (string, error) {
 		return "", errors.New("unable to connect")
 	}
 	defer dbs.db.Close()
-	rows := dbs.db.QueryRow(ctx, "select link from links where short=$1 limit 1;", url)
-	var link string
-	rows.Scan(&link)
-	return link, nil
+	rows := dbs.db.QueryRow(ctx, "select link, deleted from links where short=$1  limit 1;", url)
+	if err != nil {
+		return "", errors.New("not found")
+	}
+	var v links
+	err = rows.Scan(&v.link, &v.deleted)
+	if v.deleted == true {
+		return "", errors.New("gone")
+	}
+	return v.link, nil
+
 }
 
 func (dbs *DBStorage) GetURLByID(id string) (map[string]string, error) {
@@ -113,4 +121,19 @@ func GetShortURLByOrigin(path string, url string) (string, error) {
 		return "", errors.New("scan error")
 	}
 	return link, nil
+}
+
+func Del(path string, code string, id string) {
+	ctx := context.Background()
+	db, err := pgxpool.New(ctx, path)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer db.Close()
+	_, err = db.Exec(ctx, "UPDATE links SET deleted = true WHERE short = $1 AND id = $2;", code, id)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }

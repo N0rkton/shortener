@@ -18,5 +18,7 @@ func main() {
 	router.HandleFunc("/ping", handlers.PingDB).Methods(http.MethodGet)
 	router.HandleFunc("/{id}", handlers.RedirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.ListURL).Methods(http.MethodGet)
+	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
+
 	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
 }
