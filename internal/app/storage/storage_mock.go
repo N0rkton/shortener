@@ -25,7 +25,6 @@ func (m *StorageMock) GetURLByID(id string) (map[string]string, error) {
 	return nil, nil
 }
 func (m *StorageMock) Del(id string, code string) {
-	return
 }
 
 func NewStorageMock() Storage {

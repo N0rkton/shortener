@@ -64,5 +64,4 @@ func (fs *FileStorage) GetURLByID(id string) (map[string]string, error) {
 }
 func (fs *FileStorage) Del(id string, code string) {
 	fs.memStorage.Del(id, code)
-	return
 }
