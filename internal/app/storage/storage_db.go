@@ -123,15 +123,16 @@ func GetShortURLByOrigin(path string, url string) (string, error) {
 	return link, nil
 }
 
-func Del(path string, code string, id string) {
+func (dbs *DBStorage) Del(id string, code string) {
 	ctx := context.Background()
-	db, err := pgxpool.New(ctx, path)
+	var err error
+	dbs.db, err = pgxpool.New(ctx, dbs.path)
 	if err != nil {
-		log.Println(err)
+		log.Println()
 		return
 	}
-	defer db.Close()
-	_, err = db.Exec(ctx, "UPDATE links SET deleted = true WHERE short = $1 AND id = $2;", code, id)
+	defer dbs.db.Close()
+	_, err = dbs.db.Exec(ctx, "UPDATE links SET deleted = true WHERE short = $1 AND id = $2;", code, id)
 	if err != nil {
 		log.Println(err)
 		return

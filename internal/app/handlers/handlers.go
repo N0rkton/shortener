@@ -268,6 +268,10 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
+	if link == "gone" {
+		http.Error(w, "gone", http.StatusGone)
+		return
+	}
 	w.Header().Set("Location", link)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
@@ -412,11 +416,18 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 	wg := &sync.WaitGroup{}
 	for i := 0; i < len(text); i++ {
-		wg.Add(1)
 		v := text[i]
+		if *config.DBAddress != "" {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				db.Del(value, v)
+			}()
+		}
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			storage.Del(*config.DBAddress, v, value)
+			localMem.Del(value, v)
 		}()
 	}
 	wg.Wait()

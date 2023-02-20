@@ -2,15 +2,18 @@ package storage
 
 import (
 	"errors"
+	"sync"
 )
 
 type Storage interface {
 	AddURL(id string, code string, url string) error
 	GetURL(url string) (string, error)
 	GetURLByID(id string) (map[string]string, error)
+	Del(id string, code string)
 }
 type MemoryStorage struct {
 	localMem map[string]map[string]string
+	mu       sync.RWMutex
 }
 
 func NewMemoryStorage() Storage {
@@ -42,4 +45,14 @@ func (sm *MemoryStorage) GetURLByID(id string) (map[string]string, error) {
 		return text, nil
 	}
 	return nil, errors.New("not found")
+}
+func (sm *MemoryStorage) Del(id string, code string) {
+
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	_, ok := sm.localMem[id][code]
+	if ok {
+		sm.AddURL(id, code, "gone")
+		return
+	}
 }
