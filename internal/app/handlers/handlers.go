@@ -241,22 +241,22 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	var ok error
 	if *config.DBAddress != "" {
 		link, ok = db.GetURL(shortLink)
-	}
-	if ok != nil {
-		status := mapErr(ok)
-		http.Error(w, ok.Error(), status)
-		return
-	}
-
-	if link != "" && ok == nil {
+		if ok != nil {
+			status := mapErr(ok)
+			http.Error(w, ok.Error(), status)
+			return
+		}
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
 	if *config.FileStoragePath != "" {
 		link, ok = fileStorage.GetURL(shortLink)
-	}
-	if link != "" && ok == nil {
+		if ok != nil {
+			status := mapErr(ok)
+			http.Error(w, ok.Error(), status)
+			return
+		}
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
@@ -441,10 +441,11 @@ func isValidURL(token string) bool {
 }
 func mapErr(err error) int {
 	if errors.Is(err, storage.ErrNotFound) {
-		return http.StatusNotFound
+		return http.StatusBadRequest
 	}
 	if errors.Is(err, storage.ErrDeleted) {
 		return http.StatusGone
 	}
 	return http.StatusInternalServerError
+
 }

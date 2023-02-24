@@ -39,7 +39,7 @@ func (sm *MemoryStorage) GetURL(code string) (string, error) {
 	if !ok {
 		return "", ErrNotFound
 	}
-	if link.deleted == true {
+	if link.deleted {
 		return link.originalURL, ErrDeleted
 	}
 	return link.originalURL, nil

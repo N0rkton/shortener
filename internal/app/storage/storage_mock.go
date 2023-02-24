@@ -14,7 +14,7 @@ func (m *StorageMock) AddURL(id string, code string, url string) error {
 func (m *StorageMock) GetURL(url string) (string, error) {
 
 	if url != "ShortedURL" {
-		return "", errors.New("not found")
+		return "", ErrNotFound
 	}
 	return "SomeLongURL", nil
 }
