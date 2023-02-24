@@ -74,10 +74,10 @@ func (dbs *DBStorage) GetURL(url string) (string, error) {
 	var v links
 	err = rows.Scan(&v.link, &v.deleted)
 	if err != nil {
-		return "", errors.New("not found")
+		return "", ErrNotFound
 	}
 	if v.deleted {
-		return "", errors.New("gone")
+		return "", ErrDeleted
 	}
 	return v.link, nil
 

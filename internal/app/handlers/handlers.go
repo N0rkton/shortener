@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	conf "github.com/N0rkton/shortener/internal/app/config"
-	"sync"
-
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
@@ -245,11 +243,11 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 		link, ok = db.GetURL(shortLink)
 	}
 	if ok != nil {
-		if ok.Error() == "gone" {
-			http.Error(w, ok.Error(), http.StatusGone)
-			return
-		}
+		status := mapErr(ok)
+		http.Error(w, ok.Error(), status)
+		return
 	}
+
 	if link != "" && ok == nil {
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -265,11 +263,8 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	}
 	link, ok = localMem.GetURL(shortLink)
 	if ok != nil {
-		http.Error(w, ok.Error(), http.StatusBadRequest)
-		return
-	}
-	if link == "gone" {
-		http.Error(w, "gone", http.StatusGone)
+		status := mapErr(ok)
+		http.Error(w, ok.Error(), status)
 		return
 	}
 	w.Header().Set("Location", link)
@@ -414,23 +409,18 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(text)
 	w.WriteHeader(http.StatusAccepted)
-	wg := &sync.WaitGroup{}
+
 	for i := 0; i < len(text); i++ {
 		v := text[i]
 		if *config.DBAddress != "" {
-			wg.Add(1)
 			go func() {
-				defer wg.Done()
 				db.Del(value, v)
 			}()
 		}
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
 			localMem.Del(value, v)
 		}()
 	}
-	wg.Wait()
 }
 
 const urlLen = 5
@@ -448,4 +438,13 @@ func isValidURL(token string) bool {
 	}
 	u, err := url.Parse(token)
 	return err == nil && u.Host != ""
+}
+func mapErr(err error) int {
+	if errors.Is(err, storage.ErrNotFound) {
+		return http.StatusNotFound
+	}
+	if errors.Is(err, storage.ErrDeleted) {
+		return http.StatusGone
+	}
+	return http.StatusInternalServerError
 }

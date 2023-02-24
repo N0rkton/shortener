@@ -5,54 +5,61 @@ import (
 	"sync"
 )
 
+var (
+	ErrNotFound = errors.New("not found") // <- возвращаем когда урла совсем-совсем нет в базе
+	ErrDeleted  = errors.New("deleted")   // <- возвращаем когда урл был, но удалили
+)
+
 type Storage interface {
 	AddURL(id string, code string, url string) error
-	GetURL(url string) (string, error)
+	GetURL(code string) (string, error)
 	GetURLByID(id string) (map[string]string, error)
 	Del(id string, code string)
 }
+type storeInfo struct {
+	cookie      string
+	originalURL string
+	deleted     bool
+}
 type MemoryStorage struct {
-	localMem map[string]map[string]string
+	localMem map[string]storeInfo
 	mu       sync.RWMutex
 }
 
 func NewMemoryStorage() Storage {
-	return &MemoryStorage{localMem: make(map[string]map[string]string)}
+	return &MemoryStorage{localMem: make(map[string]storeInfo)}
 }
 func (sm *MemoryStorage) AddURL(id string, code string, url string) error {
-	tmp := make(map[string]string)
-	for k, v := range sm.localMem[id] {
-		tmp[k] = v
-	}
-	tmp[code] = url
-	sm.localMem[id] = tmp
+	sm.localMem[code] = storeInfo{cookie: id, originalURL: url, deleted: false}
 	return nil
 }
 
-func (sm *MemoryStorage) GetURL(url string) (string, error) {
-	for k := range sm.localMem {
-		link, ok := sm.localMem[k][url]
-		if ok {
-			return link, nil
-		}
+func (sm *MemoryStorage) GetURL(code string) (string, error) {
+	link, ok := sm.localMem[code]
+	if !ok {
+		return "", ErrNotFound
 	}
-	return "", errors.New("not found")
+	if link.deleted == true {
+		return link.originalURL, ErrDeleted
+	}
+	return link.originalURL, nil
 }
 
 func (sm *MemoryStorage) GetURLByID(id string) (map[string]string, error) {
-	text, ok := sm.localMem[id]
-	if ok {
-		return text, nil
+	resp := make(map[string]string)
+	for k, v := range sm.localMem {
+		if v.cookie == id {
+			resp[k] = v.originalURL
+		}
 	}
-	return nil, errors.New("not found")
+	return resp, nil
 }
 func (sm *MemoryStorage) Del(id string, code string) {
-
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	_, ok := sm.localMem[id][code]
-	if ok {
-		sm.AddURL(id, code, "gone")
+	link, ok := sm.localMem[code]
+	if ok && link.cookie == id {
+		sm.localMem[code] = storeInfo{cookie: id, originalURL: link.originalURL, deleted: true}
 		return
 	}
 }
