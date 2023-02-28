@@ -32,6 +32,9 @@ func NewFileStorage(path string) (Storage, error) {
 			}, fmt.Errorf("unable to unmarshall: %w", err)
 		}
 		memDB.AddURL(text[0], text[1], text[2])
+		if text[3] == "1" {
+			memDB.Del(text[0], text[1])
+		}
 	}
 	return &FileStorage{
 		memStorage: memDB,
@@ -47,7 +50,7 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	}
 	log.Println(fs.f.Name())
 	fs.memStorage.AddURL(id, code, url)
-	text, err := json.Marshal([]string{id, code, url})
+	text, err := json.Marshal([]string{id, code, url, "0"})
 	if err != nil {
 		return errors.New("json error")
 	}
@@ -56,9 +59,28 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	return nil
 }
 
-func (fs *FileStorage) GetURL(url string) (string, error) {
-	return fs.memStorage.GetURL(url)
+func (fs *FileStorage) GetURL(code string) (string, error) {
+	return fs.memStorage.GetURL(code)
 }
 func (fs *FileStorage) GetURLByID(id string) (map[string]string, error) {
 	return fs.memStorage.GetURLByID(id)
+}
+func (fs *FileStorage) Del(id string, code string) {
+	fs.memStorage.Del(id, code)
+	link, ok := fs.GetURL(code)
+	if ok != nil {
+		if errors.Is(ok, ErrDeleted) {
+			var err error
+			fs.f, err = os.OpenFile(fs.f.Name(), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+			if err != nil {
+				return
+			}
+			text, err := json.Marshal([]string{id, code, link, "1"})
+			if err != nil {
+				return
+			}
+			text = append(text, '\n')
+			fs.f.Write(text)
+		}
+	}
 }

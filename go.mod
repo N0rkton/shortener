@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
