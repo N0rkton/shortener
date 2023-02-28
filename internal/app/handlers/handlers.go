@@ -409,21 +409,28 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(text)
 	w.WriteHeader(http.StatusAccepted)
-
 	for i := 0; i < len(text); i++ {
-		v := text[i]
-		if *config.DBAddress != "" {
-			go func() {
-				db.Del(value, v)
-			}()
-		}
-		go func() {
-			localMem.Del(value, v)
-		}()
+		job := DeleteURLsJob{text[i], value}
+		JobCh <- job
 	}
 }
 
+var JobCh chan DeleteURLsJob
+
 const urlLen = 5
+
+type DeleteURLsJob struct {
+	urls   string
+	userID string
+}
+
+func DelFunc(tmp DeleteURLsJob) {
+	if *config.DBAddress != "" {
+		db.Del(tmp.userID, tmp.urls)
+	} else {
+		localMem.Del(tmp.userID, tmp.urls)
+	}
+}
 
 func generateRandomString(len int) string {
 	b := make([]byte, len)
