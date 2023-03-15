@@ -9,8 +9,18 @@ import (
 	"net/http"
 )
 
+const workerCount = 10
+
 func main() {
 	handlers.Init()
+	handlers.JobCh = make(chan handlers.DeleteURLsJob, 100)
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			for job := range handlers.JobCh {
+				handlers.DelFunc(job)
+			}
+		}()
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/", handlers.IndexPage).Methods(http.MethodPost)
 	router.HandleFunc("/api/shorten", handlers.JSONIndexPage).Methods(http.MethodPost)
@@ -18,5 +28,7 @@ func main() {
 	router.HandleFunc("/ping", handlers.PingDB).Methods(http.MethodGet)
 	router.HandleFunc("/{id}", handlers.RedirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.ListURL).Methods(http.MethodGet)
+	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
+
 	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
 }

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	conf "github.com/N0rkton/shortener/internal/app/config"
-
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
@@ -242,23 +241,30 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	var ok error
 	if *config.DBAddress != "" {
 		link, ok = db.GetURL(shortLink)
-	}
-	if link != "" && ok == nil {
+		if ok != nil {
+			status := mapErr(ok)
+			http.Error(w, ok.Error(), status)
+			return
+		}
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
 	if *config.FileStoragePath != "" {
 		link, ok = fileStorage.GetURL(shortLink)
-	}
-	if link != "" && ok == nil {
+		if ok != nil {
+			status := mapErr(ok)
+			http.Error(w, ok.Error(), status)
+			return
+		}
 		w.Header().Set("Location", link)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
 	link, ok = localMem.GetURL(shortLink)
 	if ok != nil {
-		http.Error(w, ok.Error(), http.StatusBadRequest)
+		status := mapErr(ok)
+		http.Error(w, ok.Error(), status)
 		return
 	}
 	w.Header().Set("Location", link)
@@ -377,8 +383,54 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+func DeleteURL(w http.ResponseWriter, r *http.Request) {
+	var value string
+	value, err := cookies.ReadEncrypted(r, "UserId", secret)
+	if err != nil {
+		value = generateRandomString(3)
+		cookie := http.Cookie{
+			Name:     "UserId",
+			Value:    value,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+		}
+		err = cookies.WriteEncrypted(w, cookie, secret)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	var text []string
+	err = json.NewDecoder(r.Body).Decode(&text)
+	if err != nil {
+		http.Error(w, "unable to decode body", http.StatusBadRequest)
+	}
+	log.Println(text)
+	w.WriteHeader(http.StatusAccepted)
+	for i := 0; i < len(text); i++ {
+		job := DeleteURLsJob{text[i], value}
+		JobCh <- job
+	}
+}
+
+var JobCh chan DeleteURLsJob
 
 const urlLen = 5
+
+type DeleteURLsJob struct {
+	urls   string
+	userID string
+}
+
+func DelFunc(tmp DeleteURLsJob) {
+	if *config.DBAddress != "" {
+		db.Del(tmp.userID, tmp.urls)
+	} else {
+		localMem.Del(tmp.userID, tmp.urls)
+	}
+}
 
 func generateRandomString(len int) string {
 	b := make([]byte, len)
@@ -393,4 +445,14 @@ func isValidURL(token string) bool {
 	}
 	u, err := url.Parse(token)
 	return err == nil && u.Host != ""
+}
+func mapErr(err error) int {
+	if errors.Is(err, storage.ErrNotFound) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, storage.ErrDeleted) {
+		return http.StatusGone
+	}
+	return http.StatusInternalServerError
+
 }
