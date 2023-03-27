@@ -4,6 +4,7 @@ import (
 	"github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/handlers"
 	"github.com/gorilla/mux"
+	_ "net/http/pprof"
 
 	"log"
 	"net/http"
@@ -13,7 +14,7 @@ const workerCount = 10
 
 func main() {
 	handlers.Init()
-	handlers.JobCh = make(chan handlers.DeleteURLsJob, 100)
+	handlers.JobCh = make(chan handlers.DeleteURLJob, 100)
 	for i := 0; i < workerCount; i++ {
 		go func() {
 			for job := range handlers.JobCh {
@@ -29,6 +30,7 @@ func main() {
 	router.HandleFunc("/{id}", handlers.RedirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.ListURL).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
-
+	http.ListenAndServe(":8081", nil)
 	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
+
 }

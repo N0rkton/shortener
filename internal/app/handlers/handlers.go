@@ -410,21 +410,21 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	log.Println(text)
 	w.WriteHeader(http.StatusAccepted)
 	for i := 0; i < len(text); i++ {
-		job := DeleteURLsJob{text[i], value}
+		job := DeleteURLJob{text[i], value}
 		JobCh <- job
 	}
 }
 
-var JobCh chan DeleteURLsJob
+var JobCh chan DeleteURLJob
 
 const urlLen = 5
 
-type DeleteURLsJob struct {
+type DeleteURLJob struct {
 	urls   string
 	userID string
 }
 
-func DelFunc(tmp DeleteURLsJob) {
+func DelFunc(tmp DeleteURLJob) {
 	if *config.DBAddress != "" {
 		db.Del(tmp.userID, tmp.urls)
 	} else {
