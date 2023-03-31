@@ -271,7 +271,7 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 func ListURL(w http.ResponseWriter, r *http.Request) {
-	var idR []idResponse
+
 	var shortAndLongURL map[string]string
 	var ok = errors.New("not found")
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -285,6 +285,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		idR := make([]idResponse, len(shortAndLongURL))
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 		}
@@ -301,6 +302,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		idR := make([]idResponse, len(shortAndLongURL))
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 		}
@@ -318,6 +320,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	idR := make([]idResponse, len(shortAndLongURL))
 	for k, v := range shortAndLongURL {
 		idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 	}
@@ -337,7 +340,7 @@ func PingDB(w http.ResponseWriter, r *http.Request) {
 }
 func Batch(w http.ResponseWriter, r *http.Request) {
 	var req []readBatch
-	var resp []respBatch
+
 	text, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -348,13 +351,14 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	resp := make([]respBatch, len(req))
 	for k := range req {
 		if !isValidURL(req[k].OriginalURL) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
 		code := generateRandomString(urlLen)
-		resp = append(resp, respBatch{req[k].CorrelationID, *config.BaseURL + "/" + code})
+		resp[k] = respBatch{req[k].CorrelationID, *config.BaseURL + "/" + code}
 		ok := localMem.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
 		if ok != nil {
 			http.Error(w, ok.Error(), http.StatusBadRequest)
