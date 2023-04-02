@@ -1,3 +1,6 @@
+// Package handlers provides an HTTP server for a URL shortener service.
+// The service allows users to shorten URLs by generating a short code for each original URL,
+// and then redirecting the user to the original URL when they visit the shortened URL.
 package handlers
 
 import (
@@ -99,6 +102,11 @@ func gzipDecode(r *http.Request) io.ReadCloser {
 	}
 	return r.Body
 }
+
+// JSONIndexPage handles incoming HTTP requests to the /api/shorten page of the application.
+// It reads a cookie from the request to get the user's ID, or generates a new ID if one doesn't exist.
+// It then reads a URL from the request body, validates it, generates a new short code for the URL,
+// and stores the URL in the application's data stores.
 func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
@@ -173,6 +181,11 @@ func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// IndexPage handles incoming HTTP requests to the index page of the application.
+// It reads a cookie from the request to get the user's ID, or generates a new ID if one doesn't exist.
+// It then reads a URL from the request body, validates it, generates a new short code for the URL,
+// and stores the URL in the application's data stores.
 func IndexPage(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -235,6 +248,13 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(*config.BaseURL + "/" + code))
 }
+
+// RedirectTo first extracts the short code from the request URL using the gorilla/mux package,
+// and then attempts to retrieve the original URL
+// from one of three possible data sources: a local in-memory cache, a file-based storage system, or a PostgreSQL database.
+// If the original URL is found, the function sets the Location header of the HTTP response to the original URL,
+// and sets the response status code to 307 (Temporary Redirect).
+// If the original URL is not found, the function returns an error HTTP response with an appropriate error message and status code.
 func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
@@ -286,7 +306,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		idR := make([]idResponse, len(shortAndLongURL))
+		var idR []idResponse
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 		}
@@ -303,7 +323,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		idR := make([]idResponse, len(shortAndLongURL))
+		var idR []idResponse
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 		}
@@ -321,7 +341,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	idR := make([]idResponse, len(shortAndLongURL))
+	var idR []idResponse
 	for k, v := range shortAndLongURL {
 		idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 	}
