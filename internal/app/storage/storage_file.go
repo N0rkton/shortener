@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+// FileStorage - store data in txt file.
 type FileStorage struct {
 	memStorage Storage
 	f          *os.File

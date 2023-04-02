@@ -7,17 +7,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
 	conf "github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 var secret []byte

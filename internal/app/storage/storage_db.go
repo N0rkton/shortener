@@ -3,9 +3,10 @@ package storage
 import (
 	"context"
 	"errors"
+	"log"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
 )
 
 type links struct {
@@ -13,6 +14,8 @@ type links struct {
 	short   string
 	deleted bool
 }
+
+// DBStorage - store data in PostgresDB.
 type DBStorage struct {
 	db   *pgxpool.Pool
 	path string

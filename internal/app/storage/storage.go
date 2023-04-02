@@ -1,3 +1,4 @@
+// Package storage implements all data storage functions.
 package storage
 
 import (
@@ -5,15 +6,20 @@ import (
 	"sync"
 )
 
+// Module errors
 var (
 	ErrNotFound = errors.New("not found") // <- возвращаем когда урла совсем-совсем нет в базе
 	ErrDeleted  = errors.New("deleted")   // <- возвращаем когда урл был, но удалили
 )
 
 type Storage interface {
+	//AddURL - add new URL to storage, where id - user cookie, code - short URL, url - original URL.
 	AddURL(id string, code string, url string) error
+	//GetURL - returns original URL by shorted URL.
 	GetURL(code string) (string, error)
+	//GetURLByID - returns all shorted and original URLs by user.
 	GetURLByID(id string) (map[string]string, error)
+	//Del - deletes URL from storage.
 	Del(id string, code string)
 }
 type storeInfo struct {
@@ -21,6 +27,8 @@ type storeInfo struct {
 	originalURL string
 	deleted     bool
 }
+
+// MemoryStorage - store info in PC memory.
 type MemoryStorage struct {
 	localMem map[string]storeInfo
 	mu       sync.RWMutex

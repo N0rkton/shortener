@@ -1,10 +1,11 @@
 package main
 
 import (
+	_ "net/http/pprof"
+
 	"github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/handlers"
 	"github.com/gorilla/mux"
-	_ "net/http/pprof"
 
 	"log"
 	"net/http"
@@ -30,7 +31,7 @@ func main() {
 	router.HandleFunc("/{id}", handlers.RedirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.ListURL).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
-	http.ListenAndServe(":8081", nil)
+	//http.ListenAndServe(":8081", nil)
 	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
 
 }

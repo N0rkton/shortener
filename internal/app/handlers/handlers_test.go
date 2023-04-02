@@ -3,14 +3,15 @@ package handlers
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/N0rkton/shortener/internal/app/storage"
-	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/N0rkton/shortener/internal/app/storage"
+	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_indexPage(t *testing.T) {

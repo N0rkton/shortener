@@ -4,6 +4,7 @@ import (
 	"errors"
 )
 
+// StorageMock - struct to test Storage interface
 type StorageMock struct {
 }
 
