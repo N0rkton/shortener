@@ -54,6 +54,7 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
+// Write redefinition for io.Writer
 func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
@@ -264,7 +265,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 
 // RedirectTo first extracts the short code from the request URL using the gorilla/mux package,
 // and then attempts to retrieve the original URL
-// from one of three possible data sources: a local in-memory cache, a file-based storage system, or a PostgreSQL database.
+// from one of three possible data sources: a local in-memory cache, a file-based storage system, or a PostgresSQL database.
 // If the original URL is found, the function sets the Location header of the HTTP response to the original URL,
 // and sets the response status code to 307 (Temporary Redirect).
 // If the original URL is not found, the function returns an error HTTP response with an appropriate error message and status code.
