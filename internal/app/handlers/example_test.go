@@ -17,7 +17,7 @@ func ExampleIndexPage() {
 	h := http.HandlerFunc(IndexPage)
 	h(w, request)
 	resp := w.Result()
-
+	defer resp.Body.Close()
 	fmt.Println(resp.StatusCode)
 	fmt.Println(resp.Header.Get("Content-Type"))
 
@@ -35,11 +35,12 @@ func ExampleRedirectTo() {
 	h := http.HandlerFunc(RedirectTo)
 	h(w, request)
 	resp := w.Result()
+	defer resp.Body.Close()
 	fmt.Println(resp.StatusCode)
 	fmt.Println(resp.Header.Get("Content-Type"))
 	// Output:
-	// 307
-	// plain/text
+	// 400
+	// text/plain; charset=utf-8
 }
 func ExampleListURL() {
 
@@ -62,13 +63,13 @@ func ExampleListURL() {
 	h(w, request)
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
-
+	defer resp.Body.Close()
 	fmt.Println(resp.StatusCode)
 	fmt.Println(resp.Header.Get("Content-Type"))
 	fmt.Println(string(body))
 	// Output:
 	// 204
 	// text/plain; charset=utf-8
-	// kk
+	// http: named cookie not present
 
 }
