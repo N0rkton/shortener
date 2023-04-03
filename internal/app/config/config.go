@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// Cfg config of the app
 type Cfg struct {
 	ServerAddress   string
 	BaseURL         *string

@@ -159,21 +159,3 @@ func BenchmarkIndexPage(b *testing.B) {
 func ExamplePingDB() {
 
 }
-func ExampleIndexPage() {
-	var err error
-	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Init()
-
-	localMem = storage.NewStorageMock()
-	request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/", strings.NewReader("http://xnewqaajckkrj9.biz/dtncu35"))
-	request.Header.Set("Content-Type", "text/plain; charset=utf-8")
-	w := httptest.NewRecorder()
-	h := http.HandlerFunc(IndexPage)
-	h(w, request)
-	result := w.Result()
-	//equal := assert.Equal(201, result.StatusCode)
-	defer result.Body.Close()
-}

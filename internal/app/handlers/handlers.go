@@ -30,6 +30,7 @@ var fileStorage storage.Storage
 var db storage.Storage
 var config conf.Cfg
 
+// Init initializes the application configuration, file storage, memory storage, and database storage.
 func Init() {
 	config = conf.NewConfig()
 	var err error
@@ -56,6 +57,8 @@ type gzipWriter struct {
 func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
+
+// GzipHandle is an HTTP handler that compresses the response using gzip if the client accepts it.
 func GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -75,25 +78,35 @@ func GzipHandle(next http.Handler) http.Handler {
 	})
 }
 
+// body is a struct representing the request body for JSONIndexPage.
 type body struct {
 	URL string `json:"url"`
 }
+
+// response is a struct representing the response body for JSONIndexPage.
 type response struct {
 	Result string `json:"result"`
 }
+
+// idResponse is a struct representing the response body for the /api/shorten/{id} page.
 type idResponse struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+// readBatch is a struct representing a batch of read requests for the /api/shorten/batch page.
 type readBatch struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
+
+// respBatch is a struct representing the response body for the /api/shorten/batch page.
 type respBatch struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
+// gzipDecode decodes the gzip-encoded request body.
 func gzipDecode(r *http.Request) io.ReadCloser {
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
 		gz, _ := gzip.NewReader(r.Body)
@@ -291,6 +304,9 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", link)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+// ListURL function is a handler for an HTTP GET request that retrieves all
+// the shortened URLs associated with a specific user.
 func ListURL(w http.ResponseWriter, r *http.Request) {
 
 	var shortAndLongURL map[string]string
@@ -351,6 +367,8 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// PingDB checks connection to db
 func PingDB(w http.ResponseWriter, r *http.Request) {
 	err := storage.Ping(*config.DBAddress)
 	if err != nil {
@@ -359,6 +377,8 @@ func PingDB(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+// Batch handles batch requests to create multiple shortened URLs at once.
 func Batch(w http.ResponseWriter, r *http.Request) {
 	var req []readBatch
 
@@ -408,6 +428,8 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// DeleteURL - deletes array of URLs if they were shortened by this user
 func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -440,29 +462,36 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// JobCh channel, which is a global channel used for asynchronous processing of delete requests.
 var JobCh chan DeleteURLJob
 
 const urlLen = 5
 
+// DeleteURLJob struct contains the URL to delete and the user ID.
 type DeleteURLJob struct {
-	urls   string
+	url    string
 	userID string
 }
 
+// DelFunc function is responsible for actually deleting the URL.
+// It checks whether a database address is configured; if so, it calls the Del method of the db package to delete the URL from the database.
+// Otherwise, it calls the Del method of the localMem package to delete the URL from local memory.
 func DelFunc(tmp DeleteURLJob) {
 	if *config.DBAddress != "" {
-		db.Del(tmp.userID, tmp.urls)
+		db.Del(tmp.userID, tmp.url)
 	} else {
-		localMem.Del(tmp.userID, tmp.urls)
+		localMem.Del(tmp.userID, tmp.url)
 	}
 }
 
+// generateRandomString generates a random string of a given length using base32 encoding.
 func generateRandomString(len int) string {
 	b := make([]byte, len)
 	rand.Read(b)
 	return base32.StdEncoding.EncodeToString(b)
 }
 
+// isValidURL checks whether a string is a valid URL.
 func isValidURL(token string) bool {
 	_, err := url.ParseRequestURI(token)
 	if err != nil {
@@ -471,6 +500,8 @@ func isValidURL(token string) bool {
 	u, err := url.Parse(token)
 	return err == nil && u.Host != ""
 }
+
+// mapErr connects errors and http response status code
 func mapErr(err error) int {
 	if errors.Is(err, storage.ErrNotFound) {
 		return http.StatusBadRequest
