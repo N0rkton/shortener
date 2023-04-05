@@ -54,9 +54,17 @@ func ExampleListURL() {
 	c := &http.Client{
 		Jar: jar,
 	}
-	rs, _ := c.Post("http://localhost:8080/", "text/plain; charset=utf-8", strings.NewReader("http://ya.ru"))
+	rs, err := c.Post("http://localhost:8080/", "text/plain; charset=utf-8", strings.NewReader("http://ya.ru"))
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	defer rs.Body.Close()
-	rs, _ = c.Get("http://localhost:8080/api/user/urls")
+	rs, err = c.Get("http://localhost:8080/api/user/urls")
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	defer rs.Body.Close()
 	fmt.Println(rs.StatusCode)
 	fmt.Println(rs.Header.Get("Content-Type"))
