@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/N0rkton/shortener/internal/app/cookies"
-	"io"
+	"github.com/gorilla/mux"
+	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"strings"
 )
@@ -28,48 +29,40 @@ func ExampleIndexPage() {
 }
 func ExampleRedirectTo() {
 	Init()
-	localMem.AddURL("userID", "ABC123", "https://ya.ru")
-
-	request := httptest.NewRequest(http.MethodGet, "http://example/ABC123", nil)
+	localMem.AddURL("", "ABC123", "http://ya.ru")
+	r := mux.NewRouter()
+	r.HandleFunc("/{id}", RedirectTo)
 	w := httptest.NewRecorder()
-	h := http.HandlerFunc(RedirectTo)
-	h(w, request)
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "http://example/ABC123", nil))
 	resp := w.Result()
 	defer resp.Body.Close()
 	fmt.Println(resp.StatusCode)
-	fmt.Println(resp.Header.Get("Content-Type"))
+
 	// Output:
-	// 400
-	// text/plain; charset=utf-8
+	// 307
+
 }
 func ExampleListURL() {
-
 	Init()
-	val := generateRandomString(3)
-	localMem.AddURL(val, "ABC123", "https://ya.ru")
-	localMem.AddURL(val, "123ABC", "https://vk.com")
-	request := httptest.NewRequest(http.MethodGet, "http://example/api/user/urls", nil)
-	cookie := http.Cookie{
-		Name:     "UserId",
-		Value:    val,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false}
+	r := mux.NewRouter()
+	r.HandleFunc("/", IndexPage)
+	r.HandleFunc("/api/user/urls", ListURL).Methods(http.MethodGet)
+	go func() {
+		log.Fatal(http.ListenAndServe("localhost:8080", r))
+	}()
+	jar, _ := cookiejar.New(nil)
+	c := &http.Client{
+		Jar: jar,
+	}
+	rs, _ := c.Post("http://localhost:8080/", "text/plain; charset=utf-8", strings.NewReader("http://ya.ru"))
+	defer rs.Body.Close()
+	rs, _ = c.Get("http://localhost:8080/api/user/urls")
+	defer rs.Body.Close()
+	fmt.Println(rs.StatusCode)
+	fmt.Println(rs.Header.Get("Content-Type"))
 
-	w := httptest.NewRecorder()
-	cookies.WriteEncrypted(w, cookie, secret)
-
-	h := http.HandlerFunc(ListURL)
-	h(w, request)
-	resp := w.Result()
-	body, _ := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	fmt.Println(resp.StatusCode)
-	fmt.Println(resp.Header.Get("Content-Type"))
-	fmt.Println(string(body))
 	// Output:
-	// 204
-	// text/plain; charset=utf-8
-	// http: named cookie not present
+	// 200
+	// application/json
 
 }
