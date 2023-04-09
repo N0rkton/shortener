@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -55,7 +54,8 @@ func (fs *FileStorage) AddURL(id string, code string, url string) error {
 	if err != nil {
 		return fmt.Errorf("unable to open %s: %w", fs.f.Name(), err)
 	}
-	log.Println(fs.f.Name())
+	defer fs.f.Close()
+	//log.Println(fs.f.Name())
 	fs.memStorage.AddURL(id, code, url)
 	text, err := json.Marshal([]string{id, code, url, "0"})
 	if err != nil {
@@ -89,6 +89,7 @@ func (fs *FileStorage) Del(id string, code string) {
 			if err != nil {
 				return
 			}
+			defer fs.f.Close()
 			text, err := json.Marshal([]string{id, code, link, "1"})
 			if err != nil {
 				return

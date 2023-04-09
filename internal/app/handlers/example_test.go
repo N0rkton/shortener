@@ -3,9 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptest"
 	"strings"
 )
@@ -44,31 +42,23 @@ func ExampleRedirectTo() {
 }
 func ExampleListURL() {
 	Init()
-	r := mux.NewRouter()
-	r.HandleFunc("/", IndexPage)
-	r.HandleFunc("/api/user/urls", ListURL).Methods(http.MethodGet)
-	go func() {
-		log.Fatal(http.ListenAndServe("localhost:8080", r))
-	}()
-	jar, _ := cookiejar.New(nil)
-	c := &http.Client{
-		Jar: jar,
-	}
-	rs, err := c.Post("http://localhost:8080/", "text/plain; charset=utf-8", strings.NewReader("http://ya.ru"))
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer rs.Body.Close()
-	rs, err = c.Get("http://localhost:8080/api/user/urls")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer rs.Body.Close()
-	fmt.Println(rs.StatusCode)
-	fmt.Println(rs.Header.Get("Content-Type"))
-
+	w := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "http://example/", strings.NewReader("http://xnewqaajckkrj9.biz/dtncu35"))
+	h := http.HandlerFunc(IndexPage)
+	h(w, request)
+	resp := w.Result()
+	defer resp.Body.Close()
+	cookie := resp.Cookies()
+	w2 := httptest.NewRecorder()
+	request2 := httptest.NewRequest(http.MethodGet, "http://example/api/user/urls", nil)
+	request2.AddCookie(cookie[0])
+	http.SetCookie(w2, cookie[0])
+	h2 := http.HandlerFunc(ListURL)
+	h2(w2, request2)
+	resp2 := w2.Result()
+	fmt.Println(resp2.StatusCode)
+	fmt.Println(resp2.Header.Get("Content-Type"))
+	defer resp2.Body.Close()
 	// Output:
 	// 200
 	// application/json

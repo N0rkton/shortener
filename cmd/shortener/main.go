@@ -31,7 +31,7 @@ func main() {
 	router.HandleFunc("/{id}", handlers.RedirectTo).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.ListURL).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
-	//http.ListenAndServe(":8081", nil)
+
 	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
 
 }

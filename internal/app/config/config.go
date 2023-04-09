@@ -1,3 +1,4 @@
+// Package config describes supported flags and environmental vars.
 package config
 
 import (
