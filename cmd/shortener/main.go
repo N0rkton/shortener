@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "net/http/pprof"
+
 	"github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/handlers"
 	"github.com/gorilla/mux"
@@ -13,7 +15,7 @@ const workerCount = 10
 
 func main() {
 	handlers.Init()
-	handlers.JobCh = make(chan handlers.DeleteURLsJob, 100)
+	handlers.JobCh = make(chan handlers.DeleteURLJob, 100)
 	for i := 0; i < workerCount; i++ {
 		go func() {
 			for job := range handlers.JobCh {
@@ -31,4 +33,5 @@ func main() {
 	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
 
 	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
+
 }

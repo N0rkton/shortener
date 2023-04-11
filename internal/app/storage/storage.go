@@ -1,3 +1,4 @@
+// Package storage provides implementations for data storage functions.
 package storage
 
 import (
@@ -5,15 +6,21 @@ import (
 	"sync"
 )
 
+// Module errors
 var (
 	ErrNotFound = errors.New("not found") // <- возвращаем когда урла совсем-совсем нет в базе
 	ErrDeleted  = errors.New("deleted")   // <- возвращаем когда урл был, но удалили
 )
 
+// Storage an interface that defines the following methods:
 type Storage interface {
+	//AddURL - add new URL to storage, where id - user cookie, code - short URL, url - original URL.
 	AddURL(id string, code string, url string) error
+	//GetURL - returns original URL by shorted URL.
 	GetURL(code string) (string, error)
+	//GetURLByID - returns all shorted and original URLs by user.
 	GetURLByID(id string) (map[string]string, error)
+	//Del - deletes URL from storage.
 	Del(id string, code string)
 }
 type storeInfo struct {
@@ -21,19 +28,25 @@ type storeInfo struct {
 	originalURL string
 	deleted     bool
 }
+
+// MemoryStorage a struct that implements the Storage interface and stores data in the computer's memory.
 type MemoryStorage struct {
 	localMem map[string]storeInfo
 	mu       sync.RWMutex
 }
 
+// NewMemoryStorage creates a new MemoryStorage instance.
 func NewMemoryStorage() Storage {
 	return &MemoryStorage{localMem: make(map[string]storeInfo)}
 }
+
+// AddURL adds a new URL to the storage, where id is the user cookie, code is the short URL, and url is the original URL.
 func (sm *MemoryStorage) AddURL(id string, code string, url string) error {
 	sm.localMem[code] = storeInfo{cookie: id, originalURL: url, deleted: false}
 	return nil
 }
 
+// GetURL returns the original URL by the shorted URL.
 func (sm *MemoryStorage) GetURL(code string) (string, error) {
 	link, ok := sm.localMem[code]
 	if !ok {
@@ -45,6 +58,7 @@ func (sm *MemoryStorage) GetURL(code string) (string, error) {
 	return link.originalURL, nil
 }
 
+// GetURLByID returns all shorted and original URLs by user.
 func (sm *MemoryStorage) GetURLByID(id string) (map[string]string, error) {
 	resp := make(map[string]string)
 	for k, v := range sm.localMem {
@@ -54,6 +68,8 @@ func (sm *MemoryStorage) GetURLByID(id string) (map[string]string, error) {
 	}
 	return resp, nil
 }
+
+// Del deletes URL from storage.
 func (sm *MemoryStorage) Del(id string, code string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()

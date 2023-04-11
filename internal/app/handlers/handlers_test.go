@@ -3,14 +3,15 @@ package handlers
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/N0rkton/shortener/internal/app/storage"
-	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/N0rkton/shortener/internal/app/storage"
+	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_indexPage(t *testing.T) {
@@ -134,4 +135,27 @@ func Test_redirectTo(t *testing.T) {
 			defer result.Body.Close()
 		})
 	}
+}
+
+func BenchmarkIndexPage(b *testing.B) {
+	var err error
+	secret, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
+	if err != nil {
+		log.Fatal(err)
+	}
+	Init()
+	for i := 0; i < b.N; i++ {
+		localMem = storage.NewStorageMock()
+		request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/", strings.NewReader("http://xnewqaajckkrj9.biz/dtncu35"))
+		request.Header.Set("Content-Type", "text/plain; charset=utf-8")
+		w := httptest.NewRecorder()
+		h := http.HandlerFunc(IndexPage)
+		h(w, request)
+		result := w.Result()
+		assert.Equal(b, 201, result.StatusCode)
+		defer result.Body.Close()
+	}
+}
+func ExamplePingDB() {
+
 }

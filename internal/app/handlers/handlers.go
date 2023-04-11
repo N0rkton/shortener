@@ -1,3 +1,6 @@
+// Package handlers provides an HTTP server for a URL shortener service.
+// The service allows users to shorten URLs by generating a short code for each original URL,
+// and then redirecting the user to the original URL when they visit the shortened URL.
 package handlers
 
 import (
@@ -7,17 +10,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
 	conf "github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/cookies"
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 var secret []byte
@@ -26,6 +30,7 @@ var fileStorage storage.Storage
 var db storage.Storage
 var config conf.Cfg
 
+// Init initializes the application configuration, file storage, memory storage, and database storage.
 func Init() {
 	config = conf.NewConfig()
 	var err error
@@ -49,9 +54,12 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
+// Write redefinition for io.Writer
 func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
+
+// GzipHandle is an HTTP handler that compresses the response using gzip if the client accepts it.
 func GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -71,25 +79,35 @@ func GzipHandle(next http.Handler) http.Handler {
 	})
 }
 
+// body is a struct representing the request body for JSONIndexPage.
 type body struct {
 	URL string `json:"url"`
 }
+
+// response is a struct representing the response body for JSONIndexPage.
 type response struct {
 	Result string `json:"result"`
 }
+
+// idResponse is a struct representing the response body for the /api/shorten/{id} page.
 type idResponse struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+// readBatch is a struct representing a batch of read requests for the /api/shorten/batch page.
 type readBatch struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
+
+// respBatch is a struct representing the response body for the /api/shorten/batch page.
 type respBatch struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
+// gzipDecode decodes the gzip-encoded request body.
 func gzipDecode(r *http.Request) io.ReadCloser {
 	if r.Header.Get(`Content-Encoding`) == `gzip` {
 		gz, _ := gzip.NewReader(r.Body)
@@ -98,6 +116,11 @@ func gzipDecode(r *http.Request) io.ReadCloser {
 	}
 	return r.Body
 }
+
+// JSONIndexPage handles incoming HTTP requests to the /api/shorten page of the application.
+// It reads a cookie from the request to get the user's ID, or generates a new ID if one doesn't exist.
+// It then reads a URL from the request body, validates it, generates a new short code for the URL,
+// and stores the URL in the application's data stores.
 func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
@@ -172,6 +195,11 @@ func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// IndexPage handles incoming HTTP requests to the index page of the application.
+// It reads a cookie from the request to get the user's ID, or generates a new ID if one doesn't exist.
+// It then reads a URL from the request body, validates it, generates a new short code for the URL,
+// and stores the URL in the application's data stores.
 func IndexPage(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -234,6 +262,13 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(*config.BaseURL + "/" + code))
 }
+
+// RedirectTo first extracts the short code from the request URL using the gorilla/mux package,
+// and then attempts to retrieve the original URL
+// from one of three possible data sources: a local in-memory cache, a file-based storage system, or a PostgreSQL database.
+// If the original URL is found, the function sets the Location header of the HTTP response to the original URL,
+// and sets the response status code to 307 (Temporary Redirect).
+// If the original URL is not found, the function returns an error HTTP response with an appropriate error message and status code.
 func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortLink := vars["id"]
@@ -270,8 +305,11 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", link)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+// ListURL function is a handler for an HTTP GET request that retrieves all
+// the shortened URLs associated with a specific user.
 func ListURL(w http.ResponseWriter, r *http.Request) {
-	var idR []idResponse
+
 	var shortAndLongURL map[string]string
 	var ok = errors.New("not found")
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -285,6 +323,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		var idR []idResponse
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 		}
@@ -301,6 +340,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	if ok == nil {
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		var idR []idResponse
 		for k, v := range shortAndLongURL {
 			idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 		}
@@ -318,6 +358,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	var idR []idResponse
 	for k, v := range shortAndLongURL {
 		idR = append(idR, idResponse{ShortURL: *config.BaseURL + "/" + k, OriginalURL: v})
 	}
@@ -327,6 +368,8 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// PingDB checks connection to db
 func PingDB(w http.ResponseWriter, r *http.Request) {
 	err := storage.Ping(*config.DBAddress)
 	if err != nil {
@@ -335,9 +378,11 @@ func PingDB(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+// Batch handles batch requests to create multiple shortened URLs at once.
 func Batch(w http.ResponseWriter, r *http.Request) {
 	var req []readBatch
-	var resp []respBatch
+
 	text, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -348,13 +393,14 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	resp := make([]respBatch, len(req))
 	for k := range req {
 		if !isValidURL(req[k].OriginalURL) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
 		code := generateRandomString(urlLen)
-		resp = append(resp, respBatch{req[k].CorrelationID, *config.BaseURL + "/" + code})
+		resp[k] = respBatch{req[k].CorrelationID, *config.BaseURL + "/" + code}
 		ok := localMem.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
 		if ok != nil {
 			http.Error(w, ok.Error(), http.StatusBadRequest)
@@ -383,6 +429,8 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// DeleteURL - deletes array of URLs if they were shortened by this user
 func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
@@ -410,34 +458,41 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	log.Println(text)
 	w.WriteHeader(http.StatusAccepted)
 	for i := 0; i < len(text); i++ {
-		job := DeleteURLsJob{text[i], value}
+		job := DeleteURLJob{text[i], value}
 		JobCh <- job
 	}
 }
 
-var JobCh chan DeleteURLsJob
+// JobCh channel, which is a global channel used for asynchronous processing of delete requests.
+var JobCh chan DeleteURLJob
 
 const urlLen = 5
 
-type DeleteURLsJob struct {
-	urls   string
+// DeleteURLJob struct contains the URL to delete and the user ID.
+type DeleteURLJob struct {
+	url    string
 	userID string
 }
 
-func DelFunc(tmp DeleteURLsJob) {
+// DelFunc function is responsible for actually deleting the URL.
+// It checks whether a database address is configured; if so, it calls the Del method of the db package to delete the URL from the database.
+// Otherwise, it calls the Del method of the localMem package to delete the URL from local memory.
+func DelFunc(tmp DeleteURLJob) {
 	if *config.DBAddress != "" {
-		db.Del(tmp.userID, tmp.urls)
+		db.Del(tmp.userID, tmp.url)
 	} else {
-		localMem.Del(tmp.userID, tmp.urls)
+		localMem.Del(tmp.userID, tmp.url)
 	}
 }
 
+// generateRandomString generates a random string of a given length using base32 encoding.
 func generateRandomString(len int) string {
 	b := make([]byte, len)
 	rand.Read(b)
 	return base32.StdEncoding.EncodeToString(b)
 }
 
+// isValidURL checks whether a string is a valid URL.
 func isValidURL(token string) bool {
 	_, err := url.ParseRequestURI(token)
 	if err != nil {
@@ -446,6 +501,8 @@ func isValidURL(token string) bool {
 	u, err := url.Parse(token)
 	return err == nil && u.Host != ""
 }
+
+// mapErr connects errors and http response status code
 func mapErr(err error) int {
 	if errors.Is(err, storage.ErrNotFound) {
 		return http.StatusBadRequest

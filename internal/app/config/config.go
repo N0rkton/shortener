@@ -1,3 +1,4 @@
+// Package config describes supported flags and environmental vars.
 package config
 
 import (
@@ -5,6 +6,7 @@ import (
 	"os"
 )
 
+// Cfg config of the app
 type Cfg struct {
 	ServerAddress   string
 	BaseURL         *string
@@ -22,6 +24,8 @@ func init() {
 	config.FileStoragePath = flag.String("f", "", "file path")
 	config.DBAddress = flag.String("d", "", "data base connection address")
 }
+
+// NewConfig - new default config based on flag or environmental variables. Env variables prioritise flag.
 func NewConfig() Cfg {
 	flag.Parse()
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
@@ -43,6 +47,8 @@ func NewConfig() Cfg {
 	}
 	return config
 }
+
+// GetServerAddress - returns server address from config
 func GetServerAddress() string {
 	return config.ServerAddress
 }
