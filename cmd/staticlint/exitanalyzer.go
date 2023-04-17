@@ -1,3 +1,4 @@
+// Package main - checks for os.exit in main function
 package main
 
 import (
@@ -5,6 +6,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// ErrMainExit - new analyzer for os.exit in main
 var ErrMainExit = &analysis.Analyzer{
 	Name: "mainExit",
 	Doc:  "check for os.Exit in main",
