@@ -1,4 +1,4 @@
-// Package main - checks for os.exit in main function
+// Package main - checks for os.Exit in main function
 package main
 
 import (
@@ -6,17 +6,17 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// ErrMainExit - new analyzer for os.exit in main
+// ErrMainExit - new analyzer for os.Exit in main
 var ErrMainExit = &analysis.Analyzer{
 	Name: "mainExit",
-	Doc:  "check for os.Exit in main",
+	Doc:  "checks for os.Exit in main",
 	Run:  run,
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
+
 	expr := func(x *ast.ExprStmt) {
 		// проверяем, что выражение представляет собой вызов функции,
-		// у которой возвращаемая ошибка никак не обрабатывается
 		if _, ok := x.X.(*ast.CallExpr); ok {
 			{
 				if x.X.(*ast.CallExpr).Fun.(*ast.SelectorExpr).Sel.Name == "Exit" {
@@ -28,10 +28,19 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		// функцией ast.Inspect проходим по всем узлам AST
 		ast.Inspect(file, func(node ast.Node) bool {
-			switch x := node.(type) {
-
-			case *ast.ExprStmt: // выражение
-				expr(x)
+			if file.Name.Name == "main" {
+				for _, i := range file.Decls {
+					fn, ok := i.(*ast.FuncDecl)
+					if !ok {
+						continue
+					}
+					if fn.Name.Name == "main" {
+						switch x := node.(type) {
+						case *ast.ExprStmt: // выражение
+							expr(x)
+						}
+					}
+				}
 			}
 			return true
 		})

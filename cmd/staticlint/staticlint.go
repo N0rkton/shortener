@@ -1,7 +1,14 @@
+// Package main - Multichecker with several analyzers.
+// usage:
+// go install path/to/analyzer
+// go vet -vettool=$(which analyzername) path/to/files
 package main
 
 import (
 	"encoding/json"
+	"github.com/alexkohler/nakedret"
+	critic "github.com/go-critic/go-critic/checkers/analyzer"
+	sqlclosecheck "github.com/ryanrolds/sqlclosecheck/pkg/analyzer"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/printf"
@@ -44,6 +51,9 @@ func main() {
 			mychecks = append(mychecks, v.Analyzer)
 		}
 	}
+	mychecks = append(mychecks, sqlclosecheck.NewAnalyzer())
+	mychecks = append(mychecks, nakedret.NakedReturnAnalyzer(5))
+	mychecks = append(mychecks, critic.Analyzer)
 	multichecker.Main(
 		mychecks...,
 	)

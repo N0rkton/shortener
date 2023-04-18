@@ -1,4 +1,4 @@
-package pkg1
+package main
 
 import "os"
 
