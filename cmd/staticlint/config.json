@@ -1,5 +1,13 @@
 {
-  "staticcheck": [
+  "staticcheck": ["all",
+    "SA4006",
+    "SA5000",
+    "SA6000",
+    "SA9004",
+
+
+
+
     "SA1000" ,
     "SA1001" ,
     "SA1002" ,
