@@ -17,10 +17,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 	expr := func(x *ast.ExprStmt) {
 		// проверяем, что выражение представляет собой вызов функции,
-		if _, ok := x.X.(*ast.CallExpr); ok {
+		if callExpr, ok := x.X.(*ast.CallExpr); ok {
 			{
-				if x.X.(*ast.CallExpr).Fun.(*ast.SelectorExpr).Sel.Name == "Exit" {
-					pass.Reportf(x.Pos(), "Exit is forbidden")
+				if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+					if selectorExpr.Sel.Name == "Exit" && selectorExpr.X.(*ast.Ident).Name == "os" {
+						pass.Reportf(x.Pos(), "Exit is forbidden")
+					}
 				}
 			}
 		}
