@@ -50,7 +50,7 @@ func NewConfig() Cfg {
 	}
 
 	enableHTTPSEnv := os.Getenv("ENABLE_HTTPS")
-	enableHTTPSEnv = "true"
+	//enableHTTPSEnv = "true"
 	if enableHTTPSEnv == "true" {
 		*config.EnableHTTPS = true
 		*config.BaseURL = strings.Replace(defaultBaseURL, "http", "https", 1)
