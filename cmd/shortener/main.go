@@ -42,6 +42,10 @@ func main() {
 	router.HandleFunc("/api/user/urls", handlers.ListURL).Methods(http.MethodGet)
 	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
 
-	log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
+	if config.GetEnableHTTPS() {
+		log.Fatal(http.ListenAndServeTLS(config.GetServerAddress(), "cmd/shortener/certificate/localhost.crt", "cmd/shortener/certificate/localhost.key", handlers.GzipHandle(router)))
+	} else {
+		log.Fatal(http.ListenAndServe(config.GetServerAddress(), handlers.GzipHandle(router)))
+	}
 
 }
