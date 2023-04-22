@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	_ "net/http/pprof"
 
 	"github.com/N0rkton/shortener/internal/app/config"
@@ -11,9 +12,18 @@ import (
 	"net/http"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 const workerCount = 10
 
 func main() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 	handlers.Init()
 	handlers.JobCh = make(chan handlers.DeleteURLJob, 100)
 	for i := 0; i < workerCount; i++ {
