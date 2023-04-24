@@ -99,7 +99,7 @@ func NewConfig() Cfg {
 	if *config.FileStoragePath == "" && jsonConfig.FileStoragePath != "" {
 		*config.FileStoragePath = jsonConfig.FileStoragePath
 	}
-	if *config.EnableHTTPS == false && jsonConfig.EnableHTTPS == true {
+	if !*config.EnableHTTPS && jsonConfig.EnableHTTPS {
 		*config.EnableHTTPS = jsonConfig.EnableHTTPS
 		*config.BaseURL = strings.Replace(*config.BaseURL, "http", "https", 1)
 	}
