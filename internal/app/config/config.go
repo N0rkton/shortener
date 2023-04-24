@@ -2,39 +2,71 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"log"
 	"os"
 	"strings"
 )
+
+// JSONConfig - struct to unmarshall json config file (less priority than env variable and flags)
+type JSONConfig struct {
+	ServerAddress   string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePath string `json:"file_storage_path"`
+	DatabaseDsn     string `json:"database_dsn"`
+	EnableHTTPS     bool   `json:"enable_https"`
+}
 
 // Cfg config of the app
 type Cfg struct {
 	ServerAddress   string
 	BaseURL         *string
 	FileStoragePath *string
-	DBAddress       *string
+	DatabaseDsn     *string
 	EnableHTTPS     *bool
+	ConfigFile      *string
 }
 
 var config Cfg
 
 const defaultBaseURL = "http://localhost:8080"
+const defaultServerAddress = "localhost:8080"
 
 func init() {
-	config.ServerAddress = *flag.String("a", "localhost:8080", "server address")
+	config.ServerAddress = *flag.String("a", defaultServerAddress, "server address")
 	config.BaseURL = flag.String("b", defaultBaseURL, "base URL")
 	config.FileStoragePath = flag.String("f", "", "file path")
-	config.DBAddress = flag.String("d", "", "data base connection address")
+	config.DatabaseDsn = flag.String("d", "", "data base connection address")
 	config.EnableHTTPS = flag.Bool("s", false, "enable HTTPS")
+	config.ConfigFile = flag.String("c", "", "path to config file")
 }
 
 // NewConfig - new default config based on flag or environmental variables. Env variables prioritise flag.
 func NewConfig() Cfg {
 	flag.Parse()
+	var jsonConfig JSONConfig
+	configFileEnv := os.Getenv("CONFIG")
+	//configFileEnv = "internal/app/config/config_test.json"
+	if configFileEnv != "" {
+		config.ConfigFile = &configFileEnv
+	}
+	if *config.ConfigFile != "" {
+		file, err := os.ReadFile(*config.ConfigFile)
+		if err != nil {
+			log.Print(err)
+		}
+
+		err = json.Unmarshal(file, &jsonConfig)
+		if err != nil {
+			log.Print(err)
+		}
+
+	}
 	dbAddressEnv := os.Getenv("DATABASE_DSN")
 	//dbAddressEnv = "postgresql://localhost:5432/shvm"
 	if dbAddressEnv != "" {
-		config.DBAddress = &dbAddressEnv
+		config.DatabaseDsn = &dbAddressEnv
 	}
 	serverAddressEnv := os.Getenv("SERVER_ADDRESS")
 	if serverAddressEnv != "" {
@@ -53,7 +85,23 @@ func NewConfig() Cfg {
 	//enableHTTPSEnv = "true"
 	if enableHTTPSEnv == "true" {
 		*config.EnableHTTPS = true
-		*config.BaseURL = strings.Replace(defaultBaseURL, "http", "https", 1)
+		*config.BaseURL = strings.Replace(*config.BaseURL, "http", "https", 1)
+	}
+	if config.ServerAddress == defaultServerAddress && jsonConfig.ServerAddress != "" {
+		config.ServerAddress = jsonConfig.ServerAddress
+	}
+	if *config.BaseURL == defaultBaseURL && jsonConfig.BaseURL != "" {
+		*config.BaseURL = jsonConfig.BaseURL
+	}
+	if *config.DatabaseDsn == "" && jsonConfig.DatabaseDsn != "" {
+		*config.DatabaseDsn = jsonConfig.DatabaseDsn
+	}
+	if *config.FileStoragePath == "" && jsonConfig.FileStoragePath != "" {
+		*config.FileStoragePath = jsonConfig.FileStoragePath
+	}
+	if *config.EnableHTTPS == false && jsonConfig.EnableHTTPS == true {
+		*config.EnableHTTPS = jsonConfig.EnableHTTPS
+		*config.BaseURL = strings.Replace(*config.BaseURL, "http", "https", 1)
 	}
 	return config
 }

@@ -39,7 +39,7 @@ func Init() {
 		log.Println(err)
 	}
 	localMem = storage.NewMemoryStorage()
-	db, err = storage.NewDBStorage(*config.DBAddress)
+	db, err = storage.NewDBStorage(*config.DatabaseDsn)
 	if err != nil {
 		log.Println(err)
 	}
@@ -162,12 +162,12 @@ func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if *config.DBAddress != "" {
+	if *config.DatabaseDsn != "" {
 		ok = db.AddURL(value, code, body.URL)
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(ok, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-		link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, body.URL)
+		link, ok2 := storage.GetShortURLByOrigin(*config.DatabaseDsn, body.URL)
 		if ok2 == nil {
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusConflict)
@@ -241,12 +241,12 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
 		return
 	}
-	if *config.DBAddress != "" {
+	if *config.DatabaseDsn != "" {
 		ok = db.AddURL(value, code, string(s))
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(ok, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-		link, ok2 := storage.GetShortURLByOrigin(*config.DBAddress, string(s))
+		link, ok2 := storage.GetShortURLByOrigin(*config.DatabaseDsn, string(s))
 		if link != "" && ok2 == nil {
 			w.Header().Set("content-type", "plain/text")
 			w.WriteHeader(http.StatusConflict)
@@ -274,7 +274,7 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	shortLink := vars["id"]
 	var link string
 	var ok error
-	if *config.DBAddress != "" {
+	if *config.DatabaseDsn != "" {
 		link, ok = db.GetURL(shortLink)
 		if ok != nil {
 			status := mapErr(ok)
@@ -317,7 +317,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
-	if *config.DBAddress != "" && fileStorage != nil {
+	if *config.DatabaseDsn != "" && fileStorage != nil {
 		shortAndLongURL, ok = fileStorage.GetURLByID(value)
 	}
 	if ok == nil {
@@ -371,7 +371,7 @@ func ListURL(w http.ResponseWriter, r *http.Request) {
 
 // PingDB checks connection to db
 func PingDB(w http.ResponseWriter, r *http.Request) {
-	err := storage.Ping(*config.DBAddress)
+	err := storage.Ping(*config.DatabaseDsn)
 	if err != nil {
 		http.Error(w, "unable to ping db", http.StatusInternalServerError)
 		return
@@ -413,7 +413,7 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ok.Error(), http.StatusBadRequest)
 			return
 		}
-		if *config.DBAddress != "" {
+		if *config.DatabaseDsn != "" {
 			ok = db.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
 		}
 		if ok != nil {
@@ -478,7 +478,7 @@ type DeleteURLJob struct {
 // It checks whether a database address is configured; if so, it calls the Del method of the db package to delete the URL from the database.
 // Otherwise, it calls the Del method of the localMem package to delete the URL from local memory.
 func DelFunc(tmp DeleteURLJob) {
-	if *config.DBAddress != "" {
+	if *config.DatabaseDsn != "" {
 		db.Del(tmp.userID, tmp.url)
 	} else {
 		localMem.Del(tmp.userID, tmp.url)
