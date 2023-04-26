@@ -26,6 +26,7 @@ var (
 const workerCount = 10
 
 func main() {
+	handlers.Init()
 	var wg sync.WaitGroup
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
@@ -55,7 +56,7 @@ func main() {
 
 		close(idleConnsClosed)
 	}()
-	handlers.Init()
+
 	handlers.JobCh = make(chan handlers.DeleteURLJob, 100)
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
