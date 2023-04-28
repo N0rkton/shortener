@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/handlers"
@@ -46,11 +47,14 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, os.Interrupt)
 	go func() {
-		defer func() {
-			wg.Wait()
-		}()
+		defer wg.Wait()
+
 		<-sigint
-		if err := srv.Shutdown(context.Background()); err != nil {
+		ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer func() {
+			cancel()
+		}()
+		if err := srv.Shutdown(ctxShutDown); err != nil {
 			log.Printf("HTTP server Shutdown: %v", err)
 		}
 
@@ -67,7 +71,7 @@ func main() {
 		}()
 	}
 	if config.GetEnableHTTPS() {
-		if err := srv.ListenAndServeTLS("cmd/shortener/certificate/localhost.crt", "cmd/shortener/certificate/localhost.key"); err != http.ErrServerClosed {
+		if err := srv.ListenAndServeTLS(config.GetCertFile(), config.GetKeyFile()); err != http.ErrServerClosed {
 			log.Fatalf("HTTP server ListenAndServe: %v", err)
 		}
 	} else {

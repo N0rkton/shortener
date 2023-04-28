@@ -32,6 +32,8 @@ var config Cfg
 
 const defaultBaseURL = "http://localhost:8080"
 const defaultServerAddress = "localhost:8080"
+const certFile = "cmd/shortener/certificate/localhost.crt"
+const keyFile = "cmd/shortener/certificate/localhost.key"
 
 func init() {
 	config.ServerAddress = *flag.String("a", defaultServerAddress, "server address")
@@ -114,4 +116,14 @@ func GetServerAddress() string {
 // GetEnableHTTPS - returns setting for HTTPS server
 func GetEnableHTTPS() bool {
 	return *config.EnableHTTPS
+}
+
+// GetCertFile - return path to .crt file
+func GetCertFile() string {
+	return certFile
+}
+
+// GetKeyFile - returns path to .key file
+func GetKeyFile() string {
+	return keyFile
 }

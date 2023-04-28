@@ -24,3 +24,13 @@ func ExampleGetEnableHTTPS() {
 	// Output:
 	// false
 }
+func ExampleGetCertFile() {
+	fmt.Println(GetCertFile())
+	// Output:
+	// cmd/shortener/certificate/localhost.crt
+}
+func ExampleGetKeyFile() {
+	fmt.Println(GetKeyFile())
+	// Output:
+	// cmd/shortener/certificate/localhost.key
+}
