@@ -12,6 +12,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -105,6 +106,10 @@ type readBatch struct {
 type respBatch struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
+}
+type amountResp struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
 }
 
 // gzipDecode decodes the gzip-encoded request body.
@@ -461,6 +466,77 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 		job := DeleteURLJob{text[i], value}
 		JobCh <- job
 	}
+}
+
+// Stats - returns amount of shorted URLS and users
+func Stats(w http.ResponseWriter, r *http.Request) {
+	subnet := conf.GetTrustedSubnet()
+	if subnet == "" {
+		http.Error(w, "flag is not provided", http.StatusForbidden)
+		return
+	}
+	_, ipNet, err := net.ParseCIDR(subnet)
+	if err != nil {
+		http.Error(w, "json err", http.StatusInternalServerError)
+		return
+	}
+	realIPStr := r.Header.Get("X-Real-IP")
+
+	ip := strings.Replace(ipNet.String(), ":", ".", -1)
+	realIP := strings.Replace(realIPStr, ":", ".", -1)
+	ipSplit := strings.Split(ip, ".")
+	realIPSplit := strings.Split(realIP, ".")
+	for i := 0; i < len(realIPSplit)-1; i++ {
+		if ipSplit[i] != realIPSplit[i] {
+			http.Error(w, "untrusted IP", http.StatusForbidden)
+			return
+		}
+	}
+	domainRange := strings.Split(ipSplit[len(ipSplit)-1], "/")
+	if realIPSplit[len(realIPSplit)-1] <= domainRange[0] || domainRange[1] <= realIPSplit[len(realIPSplit)-1] {
+		http.Error(w, "untrusted IP", http.StatusForbidden)
+		return
+
+	}
+
+	var amount amountResp
+	if *config.FileStoragePath != "" {
+		amount.URLs, amount.Users, err = fileStorage.GetStats()
+		if err == nil {
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(amount); err != nil {
+				log.Println("jsonIndexPage: encoding response:", err)
+				http.Error(w, "unable to encode response", http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	if *config.DatabaseDsn != "" {
+		amount.URLs, amount.Users, err = db.GetStats()
+		if err == nil {
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(amount); err != nil {
+				log.Println("jsonIndexPage: encoding response:", err)
+				http.Error(w, "unable to encode response", http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	amount.URLs, amount.Users, err = localMem.GetStats()
+	if err != nil {
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(amount); err != nil {
+			log.Println("jsonIndexPage: encoding response:", err)
+			http.Error(w, "unable to encode response", http.StatusInternalServerError)
+			return
+		}
+	}
+
 }
 
 // JobCh channel, which is a global channel used for asynchronous processing of delete requests.

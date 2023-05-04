@@ -161,3 +161,25 @@ func (dbs *DBStorage) Del(id string, code string) {
 		return
 	}
 }
+
+// GetStats - returns amount of shorted URLS and users
+func (dbs *DBStorage) GetStats() (urls int, users int, err error) {
+	ctx := context.Background()
+	dbs.db, err = pgxpool.New(ctx, dbs.path)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer dbs.db.Close()
+
+	urlsDB := dbs.db.QueryRow(ctx, "SELECT COUNT(*) from links where deleted=false")
+	err = urlsDB.Scan(&urls)
+	if err != nil {
+		return 0, 0, err
+	}
+	usersDB := dbs.db.QueryRow(ctx, "SELECT  COUNT(DISTINCT id) from links")
+	err = usersDB.Scan(&users)
+	if err != nil {
+		return 0, 0, err
+	}
+	return urls, users, nil
+}

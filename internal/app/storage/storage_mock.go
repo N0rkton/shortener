@@ -35,6 +35,11 @@ func (m *StorageMock) GetURLByID(id string) (map[string]string, error) {
 func (m *StorageMock) Del(id string, code string) {
 }
 
+// GetStats - returns amount of shorted URLS and users
+func (m *StorageMock) GetStats() (urls int, users int, err error) {
+	return 0, 0, nil
+}
+
 // NewStorageMock creates new mock instance.
 func NewStorageMock() Storage {
 	return &StorageMock{}

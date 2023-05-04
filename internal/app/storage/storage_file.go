@@ -99,3 +99,8 @@ func (fs *FileStorage) Del(id string, code string) {
 		}
 	}
 }
+
+// GetStats - returns amount of shorted URLS and users
+func (fs *FileStorage) GetStats() (urls int, users int, err error) {
+	return fs.memStorage.GetStats()
+}
