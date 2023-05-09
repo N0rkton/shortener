@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/N0rkton/shortener/internal/app/config"
+	"github.com/N0rkton/shortener/internal/app/grpcfunc"
+	"github.com/N0rkton/shortener/internal/app/handlers"
+	pb "github.com/N0rkton/shortener/proto"
+	"github.com/gorilla/mux"
+	"google.golang.org/grpc"
+	"net"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/N0rkton/shortener/internal/app/config"
-	"github.com/N0rkton/shortener/internal/app/handlers"
-	"github.com/gorilla/mux"
 
 	"log"
 	"net/http"
@@ -28,6 +31,7 @@ const workerCount = 10
 
 func main() {
 	handlers.Init()
+	grpcfunc.Init()
 	var wg sync.WaitGroup
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
@@ -71,6 +75,22 @@ func main() {
 			}
 		}()
 	}
+	go func() {
+		listen, err := net.Listen("tcp", ":3200")
+		if err != nil {
+			log.Fatal(err)
+		}
+		// создаём gRPC-сервер без зарегистрированной службы
+		s := grpc.NewServer()
+		// регистрируем сервис
+		pb.RegisterShortenerServer(s, &grpcfunc.ShortenerServer{})
+
+		fmt.Println("Сервер gRPC начал работу")
+		// получаем запрос gRPC
+		if err := s.Serve(listen); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	if config.GetEnableHTTPS() {
 		if err := srv.ListenAndServeTLS(config.GetCertFile(), config.GetKeyFile()); err != http.ErrServerClosed {
 			log.Fatalf("HTTP server ListenAndServe: %v", err)

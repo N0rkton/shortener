@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "shortener/proto";
+
+message IndexPageRequest{
+  string originalURL = 1;
+}
+message IndexPageResponse{
+  string shortURL =1;
+  string error =2;
+}
+
+message RedirectToRequest{
+  string shortURL = 1;
+}
+message RedirectToResponse{
+  string originalURL =1;
+  string error =2;
+}
+
+message ListURLsRequest{
+}
+message OriginalShort{
+  string originalURL =1;
+  string shortURL=2;
+}
+message ListURLsResponse{
+  repeated OriginalShort urls =1;
+  string error =2;
+}
+message Batch{
+  string CorrelationId=1;
+  string OriginalURL=2;
+}
+
+message BatchRequest{
+  repeated  Batch req=1;
+}
+message BatchResponse{
+  repeated OriginalShort resp=1;
+  string error =2;
+}
+message DeleteRequest{
+  repeated string URLStoDelete=1;
+}
+message DeleteResponse{
+}
+message StatsRequest{
+}
+message StatsResponse{
+  int32 URLs=1;
+  int32 Users=2;
+  string error=3;
+}
+
+service Shortener{
+  rpc IndexPage(IndexPageRequest) returns (IndexPageResponse);
+  rpc RedirectTo(RedirectToRequest) returns(RedirectToResponse);
+  rpc ListURLS(ListURLsRequest) returns(ListURLsResponse);
+  rpc DeleteURL(DeleteRequest) returns(DeleteResponse);
+  rpc Stats(StatsRequest) returns(StatsResponse);
+
+}

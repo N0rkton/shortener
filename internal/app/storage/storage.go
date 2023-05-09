@@ -23,7 +23,7 @@ type Storage interface {
 	//Del - deletes URL from storage.
 	Del(id string, code string)
 	//GetStats return amount of shorted urls and users
-	GetStats() (urls int, users int, err error)
+	GetStats() (urls int32, users int32, err error)
 }
 type storeInfo struct {
 	cookie      string
@@ -83,12 +83,15 @@ func (sm *MemoryStorage) Del(id string, code string) {
 }
 
 // GetStats - returns amount of shorted URLS and users
-func (sm *MemoryStorage) GetStats() (urls int, users int, err error) {
-	urls = len(sm.localMem)
+func (sm *MemoryStorage) GetStats() (urls int32, users int32, err error) {
+
 	usersMap := make(map[string]int)
 	for _, v := range sm.localMem {
+		if !v.deleted {
+			urls += 1
+		}
 		usersMap[v.cookie] = 1
 	}
-	users = len(usersMap)
+	users = int32(len(usersMap))
 	return urls, users, nil
 }

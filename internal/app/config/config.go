@@ -4,6 +4,7 @@ package config
 import (
 	"encoding/json"
 	"flag"
+	"github.com/N0rkton/shortener/internal/app/storage"
 	"log"
 	"os"
 	"strings"
@@ -143,4 +144,20 @@ func GetKeyFile() string {
 // GetTrustedSubnet - returns  TrustedSubnet flag
 func GetTrustedSubnet() string {
 	return *config.TrustedSubnet
+}
+
+// GetStorage - select storage type
+func GetStorage() (storage.Storage, error) {
+	if *config.DatabaseDsn != "" {
+		return storage.NewDBStorage(*config.DatabaseDsn)
+	}
+	if *config.FileStoragePath != "" {
+		return storage.NewFileStorage(*config.FileStoragePath)
+	}
+	return storage.NewMemoryStorage(), nil
+}
+
+// GetBaseURL - returns base url
+func GetBaseURL() string {
+	return *config.BaseURL
 }

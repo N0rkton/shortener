@@ -36,7 +36,7 @@ func (m *StorageMock) Del(id string, code string) {
 }
 
 // GetStats - returns amount of shorted URLS and users
-func (m *StorageMock) GetStats() (urls int, users int, err error) {
+func (m *StorageMock) GetStats() (urls int32, users int32, err error) {
 	return 0, 0, nil
 }
 

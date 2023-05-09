@@ -163,7 +163,7 @@ func (dbs *DBStorage) Del(id string, code string) {
 }
 
 // GetStats - returns amount of shorted URLS and users
-func (dbs *DBStorage) GetStats() (urls int, users int, err error) {
+func (dbs *DBStorage) GetStats() (urls int32, users int32, err error) {
 	ctx := context.Background()
 	dbs.db, err = pgxpool.New(ctx, dbs.path)
 	if err != nil {

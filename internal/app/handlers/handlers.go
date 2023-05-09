@@ -82,7 +82,7 @@ func GzipHandle(next http.Handler) http.Handler {
 
 // body is a struct representing the request body for JSONIndexPage.
 type body struct {
-	URL string `json:"url"`
+	URL string `json:"URL"`
 }
 
 // response is a struct representing the response body for JSONIndexPage.
@@ -108,8 +108,8 @@ type respBatch struct {
 	ShortURL      string `json:"short_url"`
 }
 type amountResp struct {
-	URLs  int `json:"urls"`
-	Users int `json:"users"`
+	URLs  int32 `json:"urls"`
+	Users int32 `json:"users"`
 }
 
 // gzipDecode decodes the gzip-encoded request body.
@@ -129,7 +129,7 @@ func gzipDecode(r *http.Request) io.ReadCloser {
 func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
-		value = generateRandomString(3)
+		value = GenerateRandomString(3)
 		cookie := http.Cookie{
 			Name:     "UserId",
 			Value:    value,
@@ -150,11 +150,11 @@ func JSONIndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if !isValidURL(body.URL) {
+	if !IsValidURL(body.URL) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	code := generateRandomString(urlLen)
+	code := GenerateRandomString(urlLen)
 	ok := localMem.AddURL(value, code, body.URL)
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
@@ -209,7 +209,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
-		value = generateRandomString(3)
+		value = GenerateRandomString(3)
 		cookie := http.Cookie{
 			Name:     "UserId",
 			Value:    value,
@@ -229,11 +229,11 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if !isValidURL(string(s)) {
+	if !IsValidURL(string(s)) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	code := generateRandomString(urlLen)
+	code := GenerateRandomString(urlLen)
 	ok := localMem.AddURL(value, code, string(s))
 	if ok != nil {
 		http.Error(w, ok.Error(), http.StatusBadRequest)
@@ -282,7 +282,7 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	if *config.DatabaseDsn != "" {
 		link, ok = db.GetURL(shortLink)
 		if ok != nil {
-			status := mapErr(ok)
+			status := MapErr(ok)
 			http.Error(w, ok.Error(), status)
 			return
 		}
@@ -293,7 +293,7 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	if *config.FileStoragePath != "" {
 		link, ok = fileStorage.GetURL(shortLink)
 		if ok != nil {
-			status := mapErr(ok)
+			status := MapErr(ok)
 			http.Error(w, ok.Error(), status)
 			return
 		}
@@ -303,7 +303,7 @@ func RedirectTo(w http.ResponseWriter, r *http.Request) {
 	}
 	link, ok = localMem.GetURL(shortLink)
 	if ok != nil {
-		status := mapErr(ok)
+		status := MapErr(ok)
 		http.Error(w, ok.Error(), status)
 		return
 	}
@@ -400,11 +400,11 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := make([]respBatch, len(req))
 	for k := range req {
-		if !isValidURL(req[k].OriginalURL) {
+		if !IsValidURL(req[k].OriginalURL) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
-		code := generateRandomString(urlLen)
+		code := GenerateRandomString(urlLen)
 		resp[k] = respBatch{req[k].CorrelationID, *config.BaseURL + "/" + code}
 		ok := localMem.AddURL(req[k].CorrelationID, code, req[k].OriginalURL)
 		if ok != nil {
@@ -440,7 +440,7 @@ func DeleteURL(w http.ResponseWriter, r *http.Request) {
 	var value string
 	value, err := cookies.ReadEncrypted(r, "UserId", secret)
 	if err != nil {
-		value = generateRandomString(3)
+		value = GenerateRandomString(3)
 		cookie := http.Cookie{
 			Name:     "UserId",
 			Value:    value,
@@ -496,7 +496,6 @@ func Stats(w http.ResponseWriter, r *http.Request) {
 	if realIPSplit[len(realIPSplit)-1] <= domainRange[0] || domainRange[1] <= realIPSplit[len(realIPSplit)-1] {
 		http.Error(w, "untrusted IP", http.StatusForbidden)
 		return
-
 	}
 
 	var amount amountResp
@@ -546,8 +545,8 @@ const urlLen = 5
 
 // DeleteURLJob struct contains the URL to delete and the user ID.
 type DeleteURLJob struct {
-	url    string
-	userID string
+	URL    string
+	UserID string
 }
 
 // DelFunc function is responsible for actually deleting the URL.
@@ -555,21 +554,21 @@ type DeleteURLJob struct {
 // Otherwise, it calls the Del method of the localMem package to delete the URL from local memory.
 func DelFunc(tmp DeleteURLJob) {
 	if *config.DatabaseDsn != "" {
-		db.Del(tmp.userID, tmp.url)
+		db.Del(tmp.UserID, tmp.URL)
 	} else {
-		localMem.Del(tmp.userID, tmp.url)
+		localMem.Del(tmp.UserID, tmp.URL)
 	}
 }
 
-// generateRandomString generates a random string of a given length using base32 encoding.
-func generateRandomString(len int) string {
+// GenerateRandomString generates a random string of a given length using base32 encoding.
+func GenerateRandomString(len int) string {
 	b := make([]byte, len)
 	rand.Read(b)
 	return base32.StdEncoding.EncodeToString(b)
 }
 
-// isValidURL checks whether a string is a valid URL.
-func isValidURL(token string) bool {
+// IsValidURL checks whether a string is a valid URL.
+func IsValidURL(token string) bool {
 	_, err := url.ParseRequestURI(token)
 	if err != nil {
 		return false
@@ -578,8 +577,8 @@ func isValidURL(token string) bool {
 	return err == nil && u.Host != ""
 }
 
-// mapErr connects errors and http response status code
-func mapErr(err error) int {
+// MapErr connects errors and http response status code
+func MapErr(err error) int {
 	if errors.Is(err, storage.ErrNotFound) {
 		return http.StatusBadRequest
 	}
