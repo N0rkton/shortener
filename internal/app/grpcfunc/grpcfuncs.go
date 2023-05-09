@@ -67,7 +67,7 @@ func (s *ShortenerServer) IndexPage(ctx context.Context, in *pb.IndexPageRequest
 		}
 	}
 	if !handlers.IsValidURL(in.OriginalURL) {
-		response.Error = fmt.Sprint("Invalid URL")
+		response.Error = "Invalid URL"
 		return &response, nil
 	}
 	code := handlers.GenerateRandomString(urlLen)
@@ -151,7 +151,7 @@ func (s *ShortenerServer) Batch(ctx context.Context, in *pb.BatchRequest) (*pb.B
 	req := in.Req
 	for k := range req {
 		if !handlers.IsValidURL(req[k].OriginalURL) {
-			response.Error = fmt.Sprint("Invalid URL")
+			response.Error = "Invalid URL"
 			return &response, nil
 		}
 		code := handlers.GenerateRandomString(urlLen)
@@ -174,7 +174,7 @@ func (s *ShortenerServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.S
 	var err error
 	subnet := config.GetTrustedSubnet()
 	if subnet == "" {
-		response.Error = fmt.Sprint("flag is not provided")
+		response.Error = "flag is not provided"
 		return &response, nil
 	}
 	_, ipNet, err := net.ParseCIDR(subnet)
@@ -197,13 +197,13 @@ func (s *ShortenerServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.S
 	realIPSplit := strings.Split(realIP, ".")
 	for i := 0; i < len(realIPSplit)-1; i++ {
 		if ipSplit[i] != realIPSplit[i] {
-			response.Error = fmt.Sprint("untrusted IP")
+			response.Error = "untrusted IP"
 			return &response, nil
 		}
 	}
 	domainRange := strings.Split(ipSplit[len(ipSplit)-1], "/")
 	if realIPSplit[len(realIPSplit)-1] <= domainRange[0] || domainRange[1] <= realIPSplit[len(realIPSplit)-1] {
-		response.Error = fmt.Sprint("untrusted IP")
+		response.Error = "untrusted IP"
 		return &response, nil
 	}
 	response.URLs, response.Users, err = store.GetStats()
