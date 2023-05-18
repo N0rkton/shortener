@@ -86,17 +86,17 @@ func (s *ShortenerServer) IndexPage(ctx context.Context, in *pb.IndexPageRequest
 	if !ok {
 		return nil, status.Error(codes.Internal, "metadata err")
 	}
-	if !handlers.IsValidURL(in.OriginalURL) {
+	if !handlers.IsValidURL(in.OriginalUrl) {
 		err := status.Error(codes.InvalidArgument, "Invalid URL")
 		return nil, err
 	}
 	code := handlers.GenerateRandomString(urlLen)
-	err := store.AddURL(userId, code, in.OriginalURL)
+	err := store.AddURL(userId, code, in.OriginalUrl)
 	if err != nil {
 		err = status.Error(codes.Internal, "Err occurred adding url")
 		return nil, err
 	}
-	response.ShortURL = code
+	response.ShortUrl = code
 	return &response, nil
 }
 
@@ -129,8 +129,8 @@ func (s *ShortenerServer) ListURLs(ctx context.Context, in *pb.ListURLsRequest) 
 
 	for k, v := range resp {
 		originalShorts = append(originalShorts, &pb.OriginalShort{
-			OriginalURL: v,
-			ShortURL:    config.GetBaseURL() + "/" + k,
+			OriginalUrl: v,
+			ShortUrl:    config.GetBaseURL() + "/" + k,
 		})
 	}
 	response.Urls = originalShorts
@@ -147,7 +147,7 @@ func (s *ShortenerServer) DeleteUrl(ctx context.Context, in *pb.DeleteRequest) (
 		return nil, status.Error(codes.Internal, "metadata err")
 
 	}
-	urls := in.URLStoDelete
+	urls := in.UrlsToDelete
 	for i := 0; i < len(urls); i++ {
 		job := handlers.DeleteURLJob{URL: urls[i], UserID: userId}
 		handlers.JobCh <- job
@@ -162,15 +162,15 @@ func (s *ShortenerServer) Batch(ctx context.Context, in *pb.BatchRequest) (*pb.B
 
 	req := in.Req
 	for k := range req {
-		if !handlers.IsValidURL(req[k].OriginalURL) {
+		if !handlers.IsValidURL(req[k].OriginalUrl) {
 			err := status.Error(codes.InvalidArgument, "Invalid URL")
 			return nil, err
 		}
 		code := handlers.GenerateRandomString(urlLen)
 		originalShorts = append(originalShorts, &pb.OriginalShort{
-			OriginalURL: req[k].CorrelationId,
-			ShortURL:    config.GetBaseURL() + "/" + code})
-		ok := store.AddURL(req[k].CorrelationId, code, req[k].OriginalURL)
+			OriginalUrl: req[k].CorrelationId,
+			ShortUrl:    config.GetBaseURL() + "/" + code})
+		ok := store.AddURL(req[k].CorrelationId, code, req[k].OriginalUrl)
 		if ok != nil {
 			err := status.Error(codes.Internal, "Err occurred adding url")
 			return nil, err
@@ -181,7 +181,7 @@ func (s *ShortenerServer) Batch(ctx context.Context, in *pb.BatchRequest) (*pb.B
 }
 
 // Stats - returns amount of shorted URLS and users
-func (s *ShortenerServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.StatsResponse, error) {
+func (s *ShortenerServer) Stats(ctx context.Context) (*pb.StatsResponse, error) {
 	var response pb.StatsResponse
 	var err error
 	subnet := config.GetTrustedSubnet()
@@ -220,7 +220,7 @@ func (s *ShortenerServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.S
 		err = status.Error(codes.PermissionDenied, "untrusted IP")
 		return nil, err
 	}
-	response.URLs, response.Users, err = store.GetStats()
+	response.UrlCount, response.UserCount, err = store.GetStats()
 	if err != nil {
 		err = status.Error(codes.Internal, "Err occurred collecting stats")
 		return nil, err
