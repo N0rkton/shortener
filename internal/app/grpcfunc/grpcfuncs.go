@@ -54,6 +54,8 @@ func GetUserId(ctx context.Context) (string, bool) {
 	}
 	return userId, false
 }
+
+// UserIDInterceptor - unary Interceptor which checks for UserId key in metadata, and if it doesn't exist adds new one
 func UserIDInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 
 	token, ok := GetUserId(ctx)
