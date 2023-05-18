@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -34,7 +35,7 @@ type ShortenerClient interface {
 	RedirectTo(ctx context.Context, in *RedirectToRequest, opts ...grpc.CallOption) (*RedirectToResponse, error)
 	ListURLS(ctx context.Context, in *ListURLsRequest, opts ...grpc.CallOption) (*ListURLsResponse, error)
 	DeleteURL(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
-	Stats(ctx context.Context, in *StatsRequest, opts ...grpc.CallOption) (*StatsResponse, error)
+	Stats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatsResponse, error)
 }
 
 type shortenerClient struct {
@@ -81,7 +82,7 @@ func (c *shortenerClient) DeleteURL(ctx context.Context, in *DeleteRequest, opts
 	return out, nil
 }
 
-func (c *shortenerClient) Stats(ctx context.Context, in *StatsRequest, opts ...grpc.CallOption) (*StatsResponse, error) {
+func (c *shortenerClient) Stats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatsResponse, error) {
 	out := new(StatsResponse)
 	err := c.cc.Invoke(ctx, Shortener_Stats_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -98,7 +99,7 @@ type ShortenerServer interface {
 	RedirectTo(context.Context, *RedirectToRequest) (*RedirectToResponse, error)
 	ListURLS(context.Context, *ListURLsRequest) (*ListURLsResponse, error)
 	DeleteURL(context.Context, *DeleteRequest) (*DeleteResponse, error)
-	Stats(context.Context, *StatsRequest) (*StatsResponse, error)
+	Stats(context.Context, *emptypb.Empty) (*StatsResponse, error)
 	mustEmbedUnimplementedShortenerServer()
 }
 
@@ -118,7 +119,7 @@ func (UnimplementedShortenerServer) ListURLS(context.Context, *ListURLsRequest) 
 func (UnimplementedShortenerServer) DeleteURL(context.Context, *DeleteRequest) (*DeleteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteURL not implemented")
 }
-func (UnimplementedShortenerServer) Stats(context.Context, *StatsRequest) (*StatsResponse, error) {
+func (UnimplementedShortenerServer) Stats(context.Context, *emptypb.Empty) (*StatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stats not implemented")
 }
 func (UnimplementedShortenerServer) mustEmbedUnimplementedShortenerServer() {}
@@ -207,7 +208,7 @@ func _Shortener_DeleteURL_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _Shortener_Stats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StatsRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -219,7 +220,7 @@ func _Shortener_Stats_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Shortener_Stats_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShortenerServer).Stats(ctx, req.(*StatsRequest))
+		return srv.(ShortenerServer).Stats(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

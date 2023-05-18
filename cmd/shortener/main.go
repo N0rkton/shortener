@@ -47,7 +47,7 @@ func main() {
 	router.HandleFunc("/api/user/urls", handlers.DeleteURL).Methods(http.MethodDelete)
 	router.HandleFunc("/api/internal/stats", handlers.Stats).Methods(http.MethodGet)
 	var srv = http.Server{Addr: config.GetServerAddress(), Handler: handlers.GzipHandle(router)}
-
+	s := grpc.NewServer(grpc.UnaryInterceptor(grpcfunc.UserIDInterceptor))
 	idleConnsClosed := make(chan struct{})
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, os.Interrupt)
@@ -62,7 +62,7 @@ func main() {
 		if err := srv.Shutdown(ctxShutDown); err != nil {
 			log.Printf("HTTP server Shutdown: %v", err)
 		}
-
+		s.GracefulStop()
 		close(idleConnsClosed)
 	}()
 
@@ -75,13 +75,13 @@ func main() {
 			}
 		}()
 	}
+
 	go func() {
 		listen, err := net.Listen("tcp", ":3200")
 		if err != nil {
 			log.Fatal(err)
 		}
-		// создаём gRPC-сервер без зарегистрированной службы
-		s := grpc.NewServer()
+
 		// регистрируем сервис
 		pb.RegisterShortenerServer(s, &grpcfunc.ShortenerServer{})
 

@@ -2,10 +2,11 @@ package grpcfunc
 
 import (
 	"context"
-	"fmt"
 	"github.com/N0rkton/shortener/internal/app/config"
 	"github.com/N0rkton/shortener/internal/app/handlers"
 	"github.com/N0rkton/shortener/internal/app/storage"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"net"
 	"strings"
 
@@ -52,29 +53,48 @@ func GetUserId(ctx context.Context) (string, bool) {
 	}
 	return userId, false
 }
+func UserIDInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+
+	token, ok := GetUserId(ctx)
+	if ok {
+		return handler, nil
+	}
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		md.Append("UserId", token)
+		err := grpc.SetHeader(ctx, md)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "SetHeader err")
+		}
+		return handler, nil
+	}
+	md2 := metadata.New(map[string]string{"UserId": token})
+	metadata.NewIncomingContext(context.Background(), md2)
+	err := grpc.SetHeader(ctx, md2)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "SetHeader err")
+	}
+	h, err := handler(ctx, req)
+	return h, err
+}
 
 // IndexPage - shortens originalURL
 func (s *ShortenerServer) IndexPage(ctx context.Context, in *pb.IndexPageRequest) (*pb.IndexPageResponse, error) {
 	var response pb.IndexPageResponse
-	var userId string
-	md, _ := metadata.FromIncomingContext(ctx)
+
 	userId, ok := GetUserId(ctx)
 	if !ok {
-		md.Append("UserId", userId)
-		err := grpc.SetHeader(ctx, md)
-		if err != nil {
-			return nil, err
-		}
+		return nil, status.Error(codes.Internal, "metadata err")
 	}
 	if !handlers.IsValidURL(in.OriginalURL) {
-		response.Error = "Invalid URL"
-		return &response, nil
+		err := status.Error(codes.InvalidArgument, "Invalid URL")
+		return nil, err
 	}
 	code := handlers.GenerateRandomString(urlLen)
 	err := store.AddURL(userId, code, in.OriginalURL)
 	if err != nil {
-		response.Error = fmt.Sprintf("Err %s occured adding url", err)
-		return &response, nil
+		err = status.Error(codes.Internal, "Err occurred adding url")
+		return nil, err
 	}
 	response.ShortURL = code
 	return &response, nil
@@ -85,8 +105,7 @@ func (s *ShortenerServer) RedirectTo(ctx context.Context, in *pb.RedirectToReque
 	var response pb.RedirectToResponse
 	originalURL, err := store.GetURL(in.ShortURL)
 	if err != nil {
-		response.Error = fmt.Sprintf("Err %s occured getting url", err)
-		return &response, nil
+		return nil, status.Error(codes.Internal, "Err occurred getting url")
 	}
 	response.OriginalURL = originalURL
 	return &response, nil
@@ -95,20 +114,16 @@ func (s *ShortenerServer) RedirectTo(ctx context.Context, in *pb.RedirectToReque
 // ListURLs - returns all shorted urls by user
 func (s *ShortenerServer) ListURLs(ctx context.Context, in *pb.ListURLsRequest) (*pb.ListURLsResponse, error) {
 	var response pb.ListURLsResponse
-	var userId string
-	md, _ := metadata.FromIncomingContext(ctx)
 	userId, ok := GetUserId(ctx)
 	if !ok {
-		md.Append("UserId", userId)
-		err := grpc.SetHeader(ctx, md)
-		if err != nil {
-			return nil, err
-		}
+
+		return nil, status.Error(codes.Internal, "metadata err")
+
 	}
 	resp, err := store.GetURLByID(userId)
 	if err != nil {
-		response.Error = fmt.Sprintf("Err %s occured getting url", err)
-		return &response, nil
+		err = status.Error(codes.Internal, "Err occurred getting url")
+		return nil, err
 	}
 	var originalShorts []*pb.OriginalShort
 
@@ -125,15 +140,12 @@ func (s *ShortenerServer) ListURLs(ctx context.Context, in *pb.ListURLsRequest) 
 // DeleteUrl - delete urls if it was shorted by user
 func (s *ShortenerServer) DeleteUrl(ctx context.Context, in *pb.DeleteRequest) (*pb.DeleteResponse, error) {
 	var response pb.DeleteResponse
-	var userId string
-	md, _ := metadata.FromIncomingContext(ctx)
+
 	userId, ok := GetUserId(ctx)
 	if !ok {
-		md.Append("UserId", userId)
-		err := grpc.SetHeader(ctx, md)
-		if err != nil {
-			return nil, err
-		}
+
+		return nil, status.Error(codes.Internal, "metadata err")
+
 	}
 	urls := in.URLStoDelete
 	for i := 0; i < len(urls); i++ {
@@ -151,8 +163,8 @@ func (s *ShortenerServer) Batch(ctx context.Context, in *pb.BatchRequest) (*pb.B
 	req := in.Req
 	for k := range req {
 		if !handlers.IsValidURL(req[k].OriginalURL) {
-			response.Error = "Invalid URL"
-			return &response, nil
+			err := status.Error(codes.InvalidArgument, "Invalid URL")
+			return nil, err
 		}
 		code := handlers.GenerateRandomString(urlLen)
 		originalShorts = append(originalShorts, &pb.OriginalShort{
@@ -160,8 +172,8 @@ func (s *ShortenerServer) Batch(ctx context.Context, in *pb.BatchRequest) (*pb.B
 			ShortURL:    config.GetBaseURL() + "/" + code})
 		ok := store.AddURL(req[k].CorrelationId, code, req[k].OriginalURL)
 		if ok != nil {
-			response.Error = fmt.Sprintf("Err %s occured adding url", ok)
-			return &response, nil
+			err := status.Error(codes.Internal, "Err occurred adding url")
+			return nil, err
 		}
 	}
 	response.Resp = originalShorts
@@ -174,13 +186,13 @@ func (s *ShortenerServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.S
 	var err error
 	subnet := config.GetTrustedSubnet()
 	if subnet == "" {
-		response.Error = "flag is not provided"
-		return &response, nil
+		err = status.Error(codes.NotFound, "flag is not provided")
+		return nil, err
 	}
 	_, ipNet, err := net.ParseCIDR(subnet)
 	if err != nil {
-		response.Error = fmt.Sprintf("json err %s", err)
-		return &response, nil
+		err = status.Error(codes.Internal, "ParseCIDR error")
+		return nil, err
 	}
 	var realIPStr string
 	var value []string
@@ -191,25 +203,27 @@ func (s *ShortenerServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.S
 			realIPStr = value[0]
 		}
 	}
+
 	ip := strings.Replace(ipNet.String(), ":", ".", -1)
 	realIP := strings.Replace(realIPStr, ":", ".", -1)
 	ipSplit := strings.Split(ip, ".")
 	realIPSplit := strings.Split(realIP, ".")
 	for i := 0; i < len(realIPSplit)-1; i++ {
 		if ipSplit[i] != realIPSplit[i] {
-			response.Error = "untrusted IP"
-			return &response, nil
+			err = status.Error(codes.PermissionDenied, "untrusted IP")
+			return nil, err
 		}
 	}
 	domainRange := strings.Split(ipSplit[len(ipSplit)-1], "/")
-	if realIPSplit[len(realIPSplit)-1] <= domainRange[0] || domainRange[1] <= realIPSplit[len(realIPSplit)-1] {
-		response.Error = "untrusted IP"
-		return &response, nil
+	ipIndex := realIPSplit[len(realIPSplit)-1]
+	if ipIndex <= domainRange[0] && domainRange[1] <= ipIndex {
+		err = status.Error(codes.PermissionDenied, "untrusted IP")
+		return nil, err
 	}
 	response.URLs, response.Users, err = store.GetStats()
 	if err != nil {
-		response.Error = fmt.Sprintf("Err %s occured collecting stats", err)
-		return &response, nil
+		err = status.Error(codes.Internal, "Err occurred collecting stats")
+		return nil, err
 	}
 	return &response, nil
 }

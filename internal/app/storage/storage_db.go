@@ -171,15 +171,15 @@ func (dbs *DBStorage) GetStats() (urls int32, users int32, err error) {
 	}
 	defer dbs.db.Close()
 
-	urlsDB := dbs.db.QueryRow(ctx, "SELECT COUNT(*) from links where deleted=false")
-	err = urlsDB.Scan(&urls)
+	type stats struct {
+		urls  int32
+		users int32
+	}
+	var userAndLinks stats
+	amount := dbs.db.QueryRow(ctx, "SELECT COUNT(*) as users_count, SUM(CASE WHEN deleted = false THEN 1 ELSE 0 END) as urls_count from links GROUP BY id")
+	err = amount.Scan(&userAndLinks)
 	if err != nil {
 		return 0, 0, err
 	}
-	usersDB := dbs.db.QueryRow(ctx, "SELECT  COUNT(DISTINCT id) from links")
-	err = usersDB.Scan(&users)
-	if err != nil {
-		return 0, 0, err
-	}
-	return urls, users, nil
+	return userAndLinks.urls, userAndLinks.users, nil
 }
