@@ -7,6 +7,7 @@ import (
 	"github.com/N0rkton/shortener/internal/app/storage"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"net"
 	"strings"
 
@@ -181,7 +182,7 @@ func (s *ShortenerServer) Batch(ctx context.Context, in *pb.BatchRequest) (*pb.B
 }
 
 // Stats - returns amount of shorted URLS and users
-func (s *ShortenerServer) Stats(ctx context.Context) (*pb.StatsResponse, error) {
+func (s *ShortenerServer) Stats(ctx context.Context, in *emptypb.Empty) (*pb.StatsResponse, error) {
 	var response pb.StatsResponse
 	var err error
 	subnet := config.GetTrustedSubnet()
