@@ -72,7 +72,7 @@ func Test_jsonIndexPage(t *testing.T) {
 		{name: "Positive",
 			want:    want{code: 201},
 			request: "http://localhost:8080/",
-			body:    []byte(`{"url":"http://localhost:8080/BpLnf"}`),
+			body:    []byte(`{"URL":"http://localhost:8080/BpLnf"}`),
 		},
 		{name: "Negative",
 			want:    want{code: 400},

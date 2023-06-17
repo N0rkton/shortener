@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package shortener;
+import "google/protobuf/empty.proto";
+option go_package = "shortener/proto";
+
+message IndexPageRequest{
+  string original_url = 1;
+}
+message IndexPageResponse{
+  string short_url =1;
+  string error =2;
+}
+
+message RedirectToRequest{
+  string shortURL = 1;
+}
+message RedirectToResponse{
+  string originalURL =1;
+  string error =2;
+}
+
+message ListURLsRequest{
+}
+message OriginalShort{
+  string original_url =1;
+  string short_url=2;
+}
+message ListURLsResponse{
+  repeated OriginalShort urls =1;
+  string error =2;
+}
+message Batch{
+  string correlation_id=1;
+  string original_url=2;
+}
+
+message BatchRequest{
+  repeated  Batch req=1;
+}
+message BatchResponse{
+  repeated OriginalShort resp=1;
+  string error =2;
+}
+message DeleteRequest{
+  repeated string urls_to_delete=1;
+}
+message DeleteResponse{
+  string error =1;
+}
+
+message StatsResponse{
+  int32 url_count=1;
+  int32 user_count=2;
+  string error=3;
+}
+
+service Shortener{
+  rpc IndexPage(IndexPageRequest) returns (IndexPageResponse);
+  rpc RedirectTo(RedirectToRequest) returns(RedirectToResponse);
+  rpc ListURLS(ListURLsRequest) returns(ListURLsResponse);
+  rpc DeleteURL(DeleteRequest) returns(DeleteResponse);
+  rpc Stats(google.protobuf.Empty) returns(StatsResponse);
+
+}

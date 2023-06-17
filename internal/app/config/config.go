@@ -4,6 +4,7 @@ package config
 import (
 	"encoding/json"
 	"flag"
+	"github.com/N0rkton/shortener/internal/app/storage"
 	"log"
 	"os"
 	"strings"
@@ -16,6 +17,7 @@ type JSONConfig struct {
 	FileStoragePath string `json:"file_storage_path"`
 	DatabaseDsn     string `json:"database_dsn"`
 	EnableHTTPS     bool   `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 // Cfg config of the app
@@ -26,6 +28,7 @@ type Cfg struct {
 	DatabaseDsn     *string
 	EnableHTTPS     *bool
 	ConfigFile      *string
+	TrustedSubnet   *string
 }
 
 var config Cfg
@@ -42,6 +45,8 @@ func init() {
 	config.DatabaseDsn = flag.String("d", "", "data base connection address")
 	config.EnableHTTPS = flag.Bool("s", false, "enable HTTPS")
 	config.ConfigFile = flag.String("c", "", "path to config file")
+	config.TrustedSubnet = flag.String("t", "", "CIDR")
+
 }
 
 // NewConfig - new default config based on flag or environmental variables. Env variables prioritise flag.
@@ -89,6 +94,11 @@ func NewConfig() Cfg {
 		*config.EnableHTTPS = true
 		*config.BaseURL = strings.Replace(*config.BaseURL, "http", "https", 1)
 	}
+	trustedSubnetEnv := os.Getenv("TRUSTED_SUBNET")
+	if trustedSubnetEnv != "" {
+		*config.TrustedSubnet = trustedSubnetEnv
+	}
+
 	if config.ServerAddress == defaultServerAddress && jsonConfig.ServerAddress != "" {
 		config.ServerAddress = jsonConfig.ServerAddress
 	}
@@ -104,6 +114,9 @@ func NewConfig() Cfg {
 	if !*config.EnableHTTPS && jsonConfig.EnableHTTPS {
 		*config.EnableHTTPS = jsonConfig.EnableHTTPS
 		*config.BaseURL = strings.Replace(*config.BaseURL, "http", "https", 1)
+	}
+	if *config.TrustedSubnet == "" && jsonConfig.TrustedSubnet != "" {
+		*config.TrustedSubnet = jsonConfig.TrustedSubnet
 	}
 	return config
 }
@@ -126,4 +139,25 @@ func GetCertFile() string {
 // GetKeyFile - returns path to .key file
 func GetKeyFile() string {
 	return keyFile
+}
+
+// GetTrustedSubnet - returns  TrustedSubnet flag
+func GetTrustedSubnet() string {
+	return *config.TrustedSubnet
+}
+
+// GetStorage - select storage type
+func GetStorage() (storage.Storage, error) {
+	if *config.DatabaseDsn != "" {
+		return storage.NewDBStorage(*config.DatabaseDsn)
+	}
+	if *config.FileStoragePath != "" {
+		return storage.NewFileStorage(*config.FileStoragePath)
+	}
+	return storage.NewMemoryStorage(), nil
+}
+
+// GetBaseURL - returns base url
+func GetBaseURL() string {
+	return *config.BaseURL
 }
